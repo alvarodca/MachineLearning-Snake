@@ -100,17 +100,9 @@ def print_state(game):
 # TODO: IMPLEMENT HERE THE NEW INTELLIGENT METHOD
 def print_line_data(game):
     '''
-    This function saves the most important and relevant data and attributes considered and stores them in a csv
+    This function returns a string containg the most relevant attributes
     '''
-    # Add the csv path afterwards
-    # csv_file_path = ""
-
-    with open('data.csv', 'w', newline= '') as csvfile:
-        # List containing the variables we wish to store
-        data_names = []
-        writer = csv.DictWriter(csvfile, fieldnames= data_names)
-
-        writer.writeheader()
+    return game.direction, game.snake_pos[0], game.snake_pos[1], game.snake_body, game.food_pos[0], game.food_pos[1], game.score
 
 
 
@@ -147,6 +139,15 @@ while True:
 
     # UNCOMMENT WHEN METHOD IS IMPLEMENTED
     #game.direction = move_tutorial_1(game)
+
+    # Storing the information on the data csv   
+    with open('data.csv', 'w', newline= '') as csvfile:
+        # Writing the corresponding information to each of the rows
+        writer = csv.writer(csvfile)
+        writer.writerow(list(print_line_data(game)))
+        # Closing the file
+        csvfile.close()
+
 
     # Moving the snake
     if game.direction == 'UP':
