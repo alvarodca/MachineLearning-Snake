@@ -5,7 +5,7 @@ Last modification in January 2024 by José Carlos Pulido
 Machine Learning Classes - University Carlos III of Madrid
 """
 
-import pygame, sys, time, random
+import pygame, sys, time, random, csv
 
 
 # DIFFICULTY settings
@@ -100,8 +100,19 @@ def print_state(game):
 # TODO: IMPLEMENT HERE THE NEW INTELLIGENT METHOD
 def print_line_data(game):
     '''
-    YOUR CODE HERE
+    This function saves the most important and relevant data and attributes considered and stores them in a csv
     '''
+    # Add the csv path afterwards
+    # csv_file_path = ""
+
+    with open('data.csv', 'w', newline= '') as csvfile:
+        # List containing the variables we wish to store
+        data_names = []
+        writer = csv.DictWriter(csvfile, fieldnames= data_names)
+
+        writer.writeheader()
+
+
 
 # Checks for errors encounteRED
 check_errors = pygame.init()
