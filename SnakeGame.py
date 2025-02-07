@@ -140,8 +140,8 @@ while True:
     # UNCOMMENT WHEN METHOD IS IMPLEMENTED
     #game.direction = move_tutorial_1(game)
 
-    # Storing the information on the data csv   
-    with open('data.csv', 'w', newline= '') as csvfile:
+    # Storing the information on the data csv, the a indicates append so data is not overwritten   
+    with open('data.csv', 'a', newline= '') as csvfile:
         # Writing the corresponding information to each of the rows
         writer = csv.writer(csvfile)
         writer.writerow(list(print_line_data(game)))
