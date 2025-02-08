@@ -102,7 +102,64 @@ def print_line_data(game):
     '''
     This function returns a string containg the most relevant attributes
     '''
-    return game.direction, game.snake_pos[0], game.snake_pos[1], game.snake_body, game.food_pos[0], game.food_pos[1], game.score
+    direction = game.direction
+    head_x = game.snake_pos[0]
+    head_y = game.snake_pos[1]
+    food_x = game.food_pos[0]
+    food_y = game.food_pos[1]
+    score = game.score
+
+    dist_left_border = head_x 
+    dist_right_border = FRAME_SIZE_X - head_x
+    dist_up_border = FRAME_SIZE_Y - head_y
+    dist_down_border = head_y
+
+    dist_body_x, dist_body_y = closest_body_points(head_x, head_y, game.snake_body)
+
+    return (direction, head_x, head_y, food_x, food_y, score, 
+            dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+            dist_body_x[0], dist_body_y[0], dist_body_x[1], dist_body_y[1], 
+            dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3])
+
+
+def closest_body_points(head_x, head_y, snake_body) -> tuple: 
+    """
+    Takes the position of the head of the snake and its body and returns the 
+    4 closest body points to the head
+    """
+    dist_body_x, dist_body_y = [], []
+
+    # Adding the distance to all body positions
+    for pos in snake_body: 
+        dist_body_x.append(head_x - pos[0])
+        dist_body_y.append(head_y - pos[1])
+
+    # Sorting the distances
+    for i in range(len(dist_body_x)):
+        dist_x = dist_body_x[i]
+        dist_y = dist_body_y[i]
+
+        for j in range(len(dist_body_x)):
+            dist2_x = dist_body_x[j]
+            dist2_y = dist_body_y[j]
+
+            if dist_x + dist_y < dist2_x + dist2_y:  
+                dist_body_x[j] = dist_x
+                dist_body_y[j] = dist_y
+                dist_body_x[i] = dist2_x
+                dist_body_y[i] = dist2_y
+                break
+    
+    # Making the lists of length 4
+    while len(dist_body_x) < 4:
+        dist_body_x.append(None)
+        dist_body_y.append(None)
+
+    while len(dist_body_x) > 4:
+        dist_body_x.pop(-1)
+        dist_body_y.pop(-1)
+    
+    return dist_body_x, dist_body_y
 
 
 
