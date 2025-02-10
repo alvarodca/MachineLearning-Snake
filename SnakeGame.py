@@ -6,6 +6,7 @@ Machine Learning Classes - University Carlos III of Madrid
 """
 
 import pygame, sys, time, random, csv
+import pandas as pd
 
 
 # DIFFICULTY settings
@@ -85,7 +86,21 @@ def move_tutorial_1(game):
     '''
     YOUR CODE HERE
     '''
-    return 'DOWN'
+    df = pd.read_csv("data.csv", header=0, index_col=0)
+    df.columns = df.columns.str.strip()
+    data = df.iloc[-1]  # Last row
+    print(data)
+    
+    if data["Head_x"] < data["Food_x"]: 
+        direction = "RIGHT"
+    elif data["Head_x"] > data["Food_x"]: 
+        direction = "LEFT"
+    elif data["Head_y"] > data["Food_y"]:
+        direction = "UP"
+    elif data["Head_y"] < data["Food_y"]: 
+        direction = "DOWN"
+
+    return direction
 
 # PRINTING DATA FROM GAME STATE
 def print_state(game):
@@ -122,45 +137,6 @@ def print_line_data(game):
             dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3])
 
 
-"""def closest_body_points(head_x, head_y, snake_body) -> tuple: 
-    
-    #Takes the position of the head of the snake and its body and returns the 
-    #4 closest body points to the head
-    
-    dist_body_x, dist_body_y = [], []
-
-    # Adding the distance to all body positions
-    for pos in snake_body: 
-        dist_body_x.append(head_x - pos[0])
-        dist_body_y.append(head_y - pos[1])
-
-    # Sorting the distances
-    for i in range(len(dist_body_x)):
-        dist_x = dist_body_x[i]
-        dist_y = dist_body_y[i]
-
-        for j in range(len(dist_body_x)):
-            dist2_x = dist_body_x[j]
-            dist2_y = dist_body_y[j]
-
-            if dist_x + dist_y < dist2_x + dist2_y:  
-                dist_body_x[j] = dist_x
-                dist_body_y[j] = dist_y
-                dist_body_x[i] = dist2_x
-                dist_body_y[i] = dist2_y
-                break
-    
-    # Making the lists of length 4
-    while len(dist_body_x) < 4:
-        dist_body_x.append(None)
-        dist_body_y.append(None)
-
-    while len(dist_body_x) > 4:
-        dist_body_x.pop(-1)
-        dist_body_y.pop(-1)
-    
-    return dist_body_x, dist_body_y"""
-
 def closest_body_points(head_x, head_y, snake_body) -> tuple:
     """Takes the position of the head of the snake and its body and returns the 
     4 closest body points to the head"""
@@ -190,8 +166,8 @@ def closest_body_points(head_x, head_y, snake_body) -> tuple:
         
     # Makes sure the list is of length of 4
     while len(closest_x) < 4:
-       closest_x.append("")
-       closest_y.append("")   
+       closest_x.append(None)
+       closest_y.append(None)   
 
     return closest_x, closest_y
 
@@ -226,9 +202,7 @@ while True:
         # CALLING MOVE METHOD
         game.direction = move_keyboard(game, event)
 
-    # UNCOMMENT WHEN METHOD IS IMPLEMENTED
-    #game.direction = move_tutorial_1(game)
-
+    # PUTTING IT ON TOP OF THE MOVEMENT TO USE REAL TIME DATA IN THE MOVE IMPLEMENTATION
     # Storing the information on the data csv, the a indicates append so data is not overwritten   
     with open('data.csv', 'a', newline= '') as csvfile:
         # Writing the corresponding information to each of the rows
@@ -236,6 +210,9 @@ while True:
         writer.writerow(list(print_line_data(game)))
         # Closing the file
         csvfile.close()
+
+    # UNCOMMENT WHEN METHOD IS IMPLEMENTED
+    game.direction = move_tutorial_1(game)
 
 
     # Moving the snake
