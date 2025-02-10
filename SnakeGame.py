@@ -122,11 +122,11 @@ def print_line_data(game):
             dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3])
 
 
-def closest_body_points(head_x, head_y, snake_body) -> tuple: 
-    """
-    Takes the position of the head of the snake and its body and returns the 
-    4 closest body points to the head
-    """
+"""def closest_body_points(head_x, head_y, snake_body) -> tuple: 
+    
+    #Takes the position of the head of the snake and its body and returns the 
+    #4 closest body points to the head
+    
     dist_body_x, dist_body_y = [], []
 
     # Adding the distance to all body positions
@@ -159,9 +159,41 @@ def closest_body_points(head_x, head_y, snake_body) -> tuple:
         dist_body_x.pop(-1)
         dist_body_y.pop(-1)
     
-    return dist_body_x, dist_body_y
+    return dist_body_x, dist_body_y"""
 
+def closest_body_points(head_x, head_y, snake_body) -> tuple:
+    """Takes the position of the head of the snake and its body and returns the 
+    4 closest body points to the head"""
+    # Initializing an empty list
+    distances = []
 
+    # Obtaining the distance between the body to each point
+    for x,y in snake_body:
+        dist = (x-head_x)**2 + (y-head_y)**2 # Calculating squared distance
+        distances.append((dist,x,y))
+
+    # Sorting the distances in ascending order
+    distances.sort()
+
+    # Obtaining the 4 smallest distances, if the list is smaller it will only return the existent values
+    closest = distances[:4]
+
+    # Returning the x and y coordinates
+    closest_x = []
+    closest_y = []
+
+    for elem in closest:
+        if elem: # Checks the element is not none
+            dist, x, y = elem
+            closest_x.append(str(x))
+            closest_y.append(str(y))
+        
+    # Makes sure the list is of length of 4
+    while len(closest_x) < 4:
+       closest_x.append("")
+       closest_y.append("")   
+
+    return closest_x, closest_y
 
 # Checks for errors encounteRED
 check_errors = pygame.init()
