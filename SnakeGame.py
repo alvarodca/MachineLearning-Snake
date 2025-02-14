@@ -15,7 +15,7 @@ import pandas as pd
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 10
+DIFFICULTY = 50
 
 # Window size
 FRAME_SIZE_X = 480
@@ -86,31 +86,122 @@ def move_tutorial_1(game):
     '''
     YOUR CODE HERE
     '''
-    df = pd.read_csv("data.csv", header=0, index_col=0)
-    df.columns = df.columns.str.strip()
-    data = df.iloc[-1]  # Last row
-    print(data)
-    
-    if data["Head_x"] < data["Food_x"]: 
-        direction = "RIGHT"
-    elif data["Head_x"] > data["Food_x"]: 
-        direction = "LEFT"
-    elif data["Head_y"] > data["Food_y"]:
-        direction = "UP"
-    elif data["Head_y"] < data["Food_y"]: 
-        direction = "DOWN"
+    data = print_line_data(game)
 
-    return direction
+    head_x = data[1]
+    head_y = data[2]
+    food_x = data[3]
+    food_y = data[4]
+    body_x = [data[10], data[12], data[14], data[16]]
+    body_y = [data[11], data[13], data[15], data[17]]
+    dist_border = [data[6], data[7], data[8], data[9]]
+
+    # Calculate the blockings
+    blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border)
+
+    """if head_x < food_x and not blocked["Right"]: 
+        direction = "RIGHT"
+    elif head_x > food_x and not blocked["Left"]: 
+        direction = "LEFT"
+    elif head_y > food_y and not blocked["Top"]:
+        direction = "UP"
+    elif head_y < food_y and not blocked["Bottom"]: 
+        direction = "DOWN"
+    else: 
+        i = 0
+        for direct in blocked:
+            if blocked[direct]: 
+                if i == 0: 
+                    direction = "LEFT"
+                elif i == 1: 
+                    direction = "RIGHT"
+                elif i == 2: 
+                    direction = "UP"
+                elif i == 3: 
+                    direction = "DOWN"
+
+            i += 1"""
+    
+    preferred_directions = []
+    if head_x < food_x:
+        preferred_directions.append("RIGHT")
+    if head_x > food_x:
+        preferred_directions.append("LEFT")
+    if head_y > food_y:
+        preferred_directions.append("UP")
+    if head_y < food_y:
+        preferred_directions.append("DOWN")
+
+    # Check preferred directions first
+    for direction in preferred_directions:
+        if not blocked[direction]:
+            return direction
+
+    # If all preferred directions are blocked, choose any available direction
+    for direction in ["RIGHT", "LEFT", "UP", "DOWN"]:
+        if not blocked[direction]:
+            return direction
+
+
+def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dist_border: list) -> dict: 
+    """
+    Takes inputs from the snake and calculates whether it has been blocked in every direction
+    """
+
+    blocked = {"LEFT": False, "RIGHT": False, "UP": False, "DOWN": False}
+
+    # Calculating which directions are blocked
+    for i in range(len(body_x)): 
+        # Top and bottom blocking
+        if body_x[i] == head_x:
+            if abs(body_y[i] - 10 - head_y) <= 5:
+                blocked["DOWN"] = True
+            if abs(body_y[i] + 10 - head_y) <= 5:
+                blocked["UP"] = True
+
+        # Left and right blocking
+        if body_y[i] == head_y: 
+            if abs(body_x[i] - 10 - head_x) <= 5:
+                blocked["RIGHT"] = True
+            if abs(body_x[i] + 10 - head_x) <= 5:
+                blocked["LEFT"] = True
+
+    # Blocking with the borders
+    if dist_border[0] < 15: 
+        blocked["LEFT"] = True
+    if dist_border[1] < 15: 
+        blocked["RIGHT"] = True
+    if dist_border[2] < 15: 
+        blocked["UP"] = True
+    if dist_border[3] < 15: 
+        blocked["DOWN"] = True
+
+    return blocked
+
 
 # PRINTING DATA FROM GAME STATE
 def print_state(game):
     print("--------GAME STATE--------")
-    print("FrameSize:", FRAME_SIZE_X, FRAME_SIZE_Y)
+    """print("FrameSize:", FRAME_SIZE_X, FRAME_SIZE_Y)
     print("Direction:", game.direction)
     print("Snake X:", game.snake_pos[0], ", Snake Y:", game.snake_pos[1])
     print("Snake Body:", game.snake_body)
     print("Food X:", game.food_pos[0], ", Food Y:", game.food_pos[1])
-    print("Score:", game.score)
+    print("Score:", game.score)"""
+    data = print_line_data(game)
+
+    head_x = data[1]
+    head_y = data[2]
+    food_x = data[3]
+    food_y = data[4]
+    body_x = [data[10], data[12], data[14], data[16]]
+    body_y = [data[11], data[13], data[15], data[17]]
+    dist_border = [data[6], data[7], data[8], data[9]]
+
+    # Calculate the blockings
+    blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border)
+    print(blocked)
+    print(dist_border)
 
 # TODO: IMPLEMENT HERE THE NEW INTELLIGENT METHOD
 def print_line_data(game):
@@ -124,10 +215,10 @@ def print_line_data(game):
     food_y = game.food_pos[1]
     score = game.score
 
-    dist_left_border = head_x 
+    dist_left_border = head_x
     dist_right_border = FRAME_SIZE_X - head_x
-    dist_up_border = FRAME_SIZE_Y - head_y
-    dist_down_border = head_y
+    dist_up_border = head_y
+    dist_down_border = FRAME_SIZE_Y - head_y
 
     dist_body_x, dist_body_y = closest_body_points(head_x, head_y, game.snake_body)
 
@@ -136,6 +227,7 @@ def print_line_data(game):
             dist_body_x[0], dist_body_y[0], dist_body_x[1], dist_body_y[1], 
             dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3])
 
+# For the tail add tail_x = game.snake_pos[-1] and ta
 
 def closest_body_points(head_x, head_y, snake_body) -> tuple:
     """Takes the position of the head of the snake and its body and returns the 
@@ -146,7 +238,9 @@ def closest_body_points(head_x, head_y, snake_body) -> tuple:
     # Obtaining the distance between the body to each point
     for x,y in snake_body:
         dist = (x-head_x)**2 + (y-head_y)**2 # Calculating squared distance
-        distances.append((dist,x,y))
+        # Ensures the distance of the header is not saved as closest point
+        if dist != 0:
+            distances.append((dist,x,y))
 
     # Sorting the distances in ascending order
     distances.sort()
@@ -161,8 +255,8 @@ def closest_body_points(head_x, head_y, snake_body) -> tuple:
     for elem in closest:
         if elem: # Checks the element is not none
             dist, x, y = elem
-            closest_x.append(str(x))
-            closest_y.append(str(y))
+            closest_x.append(int(x))
+            closest_y.append(int(y))
         
     # Makes sure the list is of length of 4
     while len(closest_x) < 4:
