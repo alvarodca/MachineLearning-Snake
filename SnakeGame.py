@@ -15,7 +15,7 @@ import pandas as pd
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 50
+DIFFICULTY = 80
 
 # Window size
 FRAME_SIZE_X = 480
@@ -95,9 +95,12 @@ def move_tutorial_1(game):
     body_x = [data[10], data[12], data[14], data[16]]
     body_y = [data[11], data[13], data[15], data[17]]
     dist_border = [data[6], data[7], data[8], data[9]]
+    tail_x = data[18]
+    tail_y = data[19]
 
     # Calculate the blockings
-    blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border)
+    # blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border, tail_x, tail_y)
+    blocked = calculate_weights(game)
 
     """if head_x < food_x and not blocked["Right"]: 
         direction = "RIGHT"
@@ -143,7 +146,7 @@ def move_tutorial_1(game):
             return direction
 
 
-def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dist_border: list) -> dict: 
+def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dist_border: list, tail_x: int, tail_y: int) -> dict: 
     """
     Takes inputs from the snake and calculates whether it has been blocked in every direction
     """
@@ -166,6 +169,20 @@ def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dis
             if abs(body_x[i] + 10 - head_x) <= 5:
                 blocked["LEFT"] = True
 
+    # Compares with the tail position if the snakes length is higher than 4
+    if len(game.snake_body) > 4:
+        if tail_x == head_x:
+            if tail_y == head_y - 10:
+                blocked["UP"] = True
+            if tail_y == head_y + 10:
+                blocked["DOWN"] = True
+        
+        if tail_y == head_y:
+            if tail_x == head_x - 10:
+                blocked["LEFT"] = True
+            if tail_y == head_y + 10:
+                blocked["RIGHT"] = True
+
     # Blocking with the borders
     if dist_border[0] < 15: 
         blocked["LEFT"] = True
@@ -178,6 +195,65 @@ def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dis
 
     return blocked
 
+def calculate_weights(game):
+    """Function which calculates to which direction there are more snake body parts in order to avoid going these direction 
+    and potential inner loops"""
+
+    # Initializing the different directions with their values
+    down_left,up_left,up_right, down_right = 0,0,0,0
+
+    data = print_line_data(game)
+
+    # Obtaining the necessary variables for obtaining the blocked dictionary
+    head_x = data[1]
+    head_y = data[2]
+    body_x = [data[10], data[12], data[14], data[16]]
+    body_y = [data[11], data[13], data[15], data[17]]
+    dist_border = [data[6], data[7], data[8], data[9]]
+    tail_x = data[18]
+    tail_y = data[19]
+
+    # Calculate the blockings
+    blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border, tail_x, tail_y)
+
+    if list(blocked.values()).count(False) == 3:
+        return blocked
+    
+    for x,y in game.snake_body:
+        # For the head of the snake
+        if x != head_x or y != head_y:
+            if x < head_x and y < head_y:
+                down_left += 1
+            elif x <= head_x and y >= head_y:
+                up_left += 1
+            elif x > head_x and y >= head_y:
+                up_right += 1
+            else:
+                down_right += 1
+
+    weights = [up_left, up_right, down_left, down_right]
+
+    max_index = weights.index(max(weights))
+
+    # Only block the most dangerous direction if at most 2 are blocked
+    if sum(blocked.values()) < 2:
+        
+
+        if max_index == 0:
+            blocked["UP"] = True
+            blocked["LEFT"] = True
+        elif max_index == 1:
+            blocked["UP"] = True
+            blocked["RIGHT"] = True
+        elif max_index == 2:
+            blocked["DOWN"] = True
+            blocked["LEFT"] = True
+        else:
+            blocked["DOWN"] = True
+            blocked["RIGHT"] = True
+
+    return blocked
+    
 
 # PRINTING DATA FROM GAME STATE
 def print_state(game):
@@ -197,9 +273,11 @@ def print_state(game):
     body_x = [data[10], data[12], data[14], data[16]]
     body_y = [data[11], data[13], data[15], data[17]]
     dist_border = [data[6], data[7], data[8], data[9]]
+    tail_x = data[18]
+    tail_y = data[19]
 
     # Calculate the blockings
-    blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border)
+    blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border, tail_x, tail_y)
     print(blocked)
     print(dist_border)
 
@@ -215,6 +293,13 @@ def print_line_data(game):
     food_y = game.food_pos[1]
     score = game.score
 
+    # Tail position
+    tail = game.snake_body[-1]
+    tail_x = tail[0]
+    tail_y = tail[1]
+
+
+
     dist_left_border = head_x
     dist_right_border = FRAME_SIZE_X - head_x
     dist_up_border = head_y
@@ -225,7 +310,7 @@ def print_line_data(game):
     return (direction, head_x, head_y, food_x, food_y, score, 
             dist_left_border, dist_right_border, dist_up_border, dist_down_border,
             dist_body_x[0], dist_body_y[0], dist_body_x[1], dist_body_y[1], 
-            dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3])
+            dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3],tail_x, tail_y)
 
 # For the tail add tail_x = game.snake_pos[-1] and ta
 
@@ -330,8 +415,14 @@ while True:
 
     # Spawning food on the screen
     if not game.food_spawn:
-        game.food_pos = [random.randrange(1, (FRAME_SIZE_X//10)) * 10, random.randrange(1, (FRAME_SIZE_Y//10)) * 10]
-    game.food_spawn = True
+        found =  False # Flag for checking if an available food position has been found
+        while not found:
+            game.food_pos = [random.randrange(1, (FRAME_SIZE_X//10)) * 10, random.randrange(1, (FRAME_SIZE_Y//10)) * 10]
+            # Ensures it does not spawn in the body
+            if game.food_pos not in game.snake_body:
+                game.food_spawn = True
+                found = True
+            
 
     # GFX
     game_window.fill(BLUE)
