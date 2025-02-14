@@ -92,38 +92,17 @@ def move_tutorial_1(game):
     head_y = data[2]
     food_x = data[3]
     food_y = data[4]
+    score = data[5]
     body_x = [data[10], data[12], data[14], data[16]]
     body_y = [data[11], data[13], data[15], data[17]]
     dist_border = [data[6], data[7], data[8], data[9]]
     tail_x = data[18]
     tail_y = data[19]
+    hor_weight = data[20]
+    ver_weight = data[21]
 
     # Calculate the blockings
-    # blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border, tail_x, tail_y)
-    blocked = calculate_weights(game)
-
-    """if head_x < food_x and not blocked["Right"]: 
-        direction = "RIGHT"
-    elif head_x > food_x and not blocked["Left"]: 
-        direction = "LEFT"
-    elif head_y > food_y and not blocked["Top"]:
-        direction = "UP"
-    elif head_y < food_y and not blocked["Bottom"]: 
-        direction = "DOWN"
-    else: 
-        i = 0
-        for direct in blocked:
-            if blocked[direct]: 
-                if i == 0: 
-                    direction = "LEFT"
-                elif i == 1: 
-                    direction = "RIGHT"
-                elif i == 2: 
-                    direction = "UP"
-                elif i == 3: 
-                    direction = "DOWN"
-
-            i += 1"""
+    blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border, tail_x, tail_y)
     
     preferred_directions = []
     if head_x < food_x:
@@ -134,6 +113,34 @@ def move_tutorial_1(game):
         preferred_directions.append("UP")
     if head_y < food_y:
         preferred_directions.append("DOWN")
+
+    blocked_directions = 0
+    for direction in ["RIGHT", "LEFT", "UP", "DOWN"]:
+        if blocked[direction]:
+            blocked_directions += 1
+
+    if blocked_directions == 2: 
+        possible_directions = []
+
+        """if not blocked["RIGHT"] and score < 0 and hor_weight >= 0:
+            return "RIGHT"
+        if not blocked["LEFT"] and score < 0 and hor_weight < 0:
+            return "LEFT"
+        if not blocked["UP"] and score < 0 and ver_weight >= 0:
+            return "UP"
+        if not blocked["DOWN"] and score < 0 and ver_weight < 0:
+            return "DOWN"""
+
+        if not blocked["RIGHT"] and hor_weight <= 0:
+            possible_directions.append("RIGHT")
+        if not blocked["LEFT"] and hor_weight > 0:
+            possible_directions.append("LEFT")
+        if not blocked["UP"] and ver_weight <= 0:
+            possible_directions.append("UP")
+        if not blocked["DOWN"] and ver_weight > 0:
+            possible_directions.append("DOWN")
+        if possible_directions:
+            return random.choice(possible_directions)
 
     # Check preferred directions first
     for direction in preferred_directions:
@@ -172,16 +179,16 @@ def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dis
     # Compares with the tail position if the snakes length is higher than 4
     if len(game.snake_body) > 4:
         if tail_x == head_x:
-            if tail_y == head_y - 10:
-                blocked["UP"] = True
-            if tail_y == head_y + 10:
+            if abs(tail_y - 10 - head_y) <= 5:
                 blocked["DOWN"] = True
+            if abs(tail_y + 10 - head_y) <= 5:
+                blocked["UP"] = True
         
         if tail_y == head_y:
-            if tail_x == head_x - 10:
-                blocked["LEFT"] = True
-            if tail_y == head_y + 10:
+            if abs(tail_x - 10 - head_x) <= 5:
                 blocked["RIGHT"] = True
+            if abs(tail_x + 10 - head_x) <= 5:
+                blocked["LEFT"] = True
 
     # Blocking with the borders
     if dist_border[0] < 15: 
@@ -200,11 +207,30 @@ def calculate_weights(game):
     and potential inner loops"""
 
     # Initializing the different directions with their values
-    down_left,up_left,up_right, down_right = 0,0,0,0
+    horizontal = 0
+    vertical = 0
 
-    data = print_line_data(game)
+    body = game.snake_body[:int(len(game.snake_body)/1.2)]
+    head_x = game.snake_pos[0]
+    head_y = game.snake_pos[1]
 
-    # Obtaining the necessary variables for obtaining the blocked dictionary
+    for i in range(len(body)):
+        if body[i][0] > head_x: 
+            horizontal += 1
+        elif body[i][0] < head_x:
+            horizontal -= 1
+
+        if body[i][1] > head_y:
+            vertical += 1
+        elif body[i][1] < head_y:
+            vertical -= 1
+
+    horizontal = horizontal / len(body)
+    vertical = vertical / len(body) 
+    
+    return horizontal, vertical
+
+    """# Obtaining the necessary variables for obtaining the blocked dictionary
     head_x = data[1]
     head_y = data[2]
     body_x = [data[10], data[12], data[14], data[16]]
@@ -237,7 +263,6 @@ def calculate_weights(game):
 
     # Only block the most dangerous direction if at most 2 are blocked
     if sum(blocked.values()) < 2:
-        
 
         if max_index == 0:
             blocked["UP"] = True
@@ -250,9 +275,7 @@ def calculate_weights(game):
             blocked["LEFT"] = True
         else:
             blocked["DOWN"] = True
-            blocked["RIGHT"] = True
-
-    return blocked
+            blocked["RIGHT"] = True"""
     
 
 # PRINTING DATA FROM GAME STATE
@@ -275,11 +298,13 @@ def print_state(game):
     dist_border = [data[6], data[7], data[8], data[9]]
     tail_x = data[18]
     tail_y = data[19]
+    hor_weight = data[20]
+    ver_weight = data[21]
 
     # Calculate the blockings
     blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border, tail_x, tail_y)
     print(blocked)
-    print(dist_border)
+    print(f"H_w: {hor_weight}; V_w: {ver_weight}")
 
 # TODO: IMPLEMENT HERE THE NEW INTELLIGENT METHOD
 def print_line_data(game):
@@ -298,19 +323,19 @@ def print_line_data(game):
     tail_x = tail[0]
     tail_y = tail[1]
 
-
-
     dist_left_border = head_x
     dist_right_border = FRAME_SIZE_X - head_x
     dist_up_border = head_y
     dist_down_border = FRAME_SIZE_Y - head_y
 
     dist_body_x, dist_body_y = closest_body_points(head_x, head_y, game.snake_body)
+    horizontal_weight, vertical_weight = calculate_weights(game)
 
     return (direction, head_x, head_y, food_x, food_y, score, 
             dist_left_border, dist_right_border, dist_up_border, dist_down_border,
             dist_body_x[0], dist_body_y[0], dist_body_x[1], dist_body_y[1], 
-            dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3],tail_x, tail_y)
+            dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3], 
+            tail_x, tail_y, horizontal_weight, vertical_weight)
 
 # For the tail add tail_x = game.snake_pos[-1] and ta
 
