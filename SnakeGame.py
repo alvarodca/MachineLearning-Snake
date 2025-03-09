@@ -5,7 +5,7 @@ Last modification in January 2024 by José Carlos Pulido
 Machine Learning Classes - University Carlos III of Madrid
 """
 
-import pygame, sys, time, random, csv
+import pygame, sys, time, random, csv, os
 
 # DIFFICULTY settings
 # Easy      ->  10
@@ -13,7 +13,7 @@ import pygame, sys, time, random, csv
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 300
+DIFFICULTY = 25
 
 # Window size
 FRAME_SIZE_X = 480
@@ -211,8 +211,8 @@ def calculate_weights(game) -> tuple:
     horizontal = 0
     vertical = 0
 
-    # Getting the half closest body points to the head
-    body = game.snake_body[:int(len(game.snake_body)/2)]
+    # Getting the closest body points to the head
+    body = game.snake_body[:int(len(game.snake_body))]
     head_x = game.snake_pos[0]
     head_y = game.snake_pos[1]
 
@@ -282,11 +282,14 @@ def print_line_data(game):
     # Calculating the weights of the snake
     horizontal_weight, vertical_weight = calculate_weights(game)
 
-    return (direction, head_x, head_y, food_x, food_y, score, 
+    # Lenght of the snake
+    length = len(game.snake_body)
+
+    return (head_x, head_y, food_x, food_y, score, 
             dist_left_border, dist_right_border, dist_up_border, dist_down_border,
             dist_body_x[0], dist_body_y[0], dist_body_x[1], dist_body_y[1], 
             dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3], 
-            tail_x, tail_y, horizontal_weight, vertical_weight)
+            tail_x, tail_y, horizontal_weight, vertical_weight, length, direction)
 
 
 def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tuple:
@@ -322,8 +325,8 @@ def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tupl
         
     # Makes sure the list is of length of 4
     while len(closest_x) < 4:
-       closest_x.append(None)
-       closest_y.append(None)   
+       closest_x.append(100_000)
+       closest_y.append(100_000)   
 
     return closest_x, closest_y
 
@@ -359,15 +362,63 @@ while True:
         game.direction = move_keyboard(game, event)
 
     # Storing the information on the data csv, the a indicates append so data is not overwritten   
-    with open('data.csv', 'a', newline= '') as csvfile:
+    """with open('data.csv', 'a', newline= '') as csvfile:
         # Writing the corresponding information to each of the rows
         writer = csv.writer(csvfile)
         writer.writerow(list(print_line_data(game)))
         # Closing the file
-        csvfile.close()
+        csvfile.close()"""
+
+
+
+    arff_file = 'all_data_snake.arff'
+
+    # Define ARFF header (modify attributes based on your data)
+    header = """@RELATION snake_game
+
+    @ATTRIBUTE Head_x NUMERIC
+    @ATTRIBUTE Head_y NUMERIC
+    @ATTRIBUTE Food_x NUMERIC
+    @ATTRIBUTE Food_y NUMERIC
+    @ATTRIBUTE Score NUMERIC
+
+    @ATTRIBUTE Dist_left_border NUMERIC
+    @ATTRIBUTE Dist_right_border NUMERIC
+    @ATTRIBUTE Dist_top_border NUMERIC
+    @ATTRIBUTE Dist_bottom_border NUMERIC
+
+    @ATTRIBUTE Dist_body_x1 NUMERIC
+    @ATTRIBUTE Dist_body_y1 NUMERIC
+    @ATTRIBUTE Dist_body_x2 NUMERIC
+    @ATTRIBUTE Dist_body_y2 NUMERIC
+    @ATTRIBUTE Dist_body_x3 NUMERIC
+    @ATTRIBUTE Dist_body_y3 NUMERIC
+    @ATTRIBUTE Dist_body_x4 NUMERIC
+    @ATTRIBUTE Dist_body_y4 NUMERIC
+
+    @ATTRIBUTE Tail_x NUMERIC
+    @ATTRIBUTE Tail_y NUMERIC
+    @ATTRIBUTE Horizontal_weight NUMERIC
+    @ATTRIBUTE Vertical_weight NUMERIC
+    @ATTRIBUTE Length NUMERIC
+    @ATTRIBUTE Direction {RIGHT, LEFT, UP, DOWN}
+
+    @DATA
+    """
+
+    # Check if file exists, if not, write header
+    if not os.path.exists(arff_file):
+        with open(arff_file, 'w') as f:
+            f.write(header)
+
+    # Append data in ARFF format
+    with open(arff_file, 'a', newline='') as f:
+        data_row = ','.join(map(str, print_line_data(game)))  # Convert list to CSV-style row
+        f.write(data_row + '\n')  # Append new instance
+
 
     # Movement being controlled by the move_tutorial_1 method
-    game.direction = move_tutorial_1(game)
+    # game.direction = move_tutorial_1(game)
 
     # Moving the snake
     if game.direction == 'UP':
