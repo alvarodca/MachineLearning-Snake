@@ -13,7 +13,7 @@ import pygame, sys, time, random, csv, os
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 25
+DIFFICULTY = 20
 
 # Window size
 FRAME_SIZE_X = 480
@@ -256,6 +256,27 @@ def print_line_data(game):
     This function returns a string containg the most relevant attributes
     '''
     direction = game.direction
+
+    # As direction is categorical we will obtain a numeric value for it
+    if direction == "UP":
+        vertical_direction = 1
+        left_direction = 0
+        right_direction = 0
+
+    elif direction == "DOWN":
+        left_direction, right_direction, vertical_direction = 0,0,0
+
+    elif direction == "LEFT":
+        left_direction = 1
+        right_direction = 0
+        vertical_direction = 0
+
+    elif direction == "RIGHT":
+        right_direction = 1
+        left_direction = 0
+        vertical_direction = 0
+
+
     score = game.score
 
     # Head position
@@ -285,11 +306,28 @@ def print_line_data(game):
     # Lenght of the snake
     length = len(game.snake_body)
 
+    # Calculating future score
+    if head_x == food_x and head_y == food_y + 10 and direction == "UP": # Food is on the upper pixel
+        future_score = score + 100
+    
+    elif head_x == food_x and head_y == food_y - 10 and direction == "DOWN": # Food is on the lower pixel
+        future_score = score + 100
+
+    elif head_x == food_x + 10 and head_y == food_y and direction == "RIGHT": # Food is on the right pixel
+        future_score = score + 100
+
+    elif head_x == food_x - 10 and head_y == food_y and direction == "LEFT": # Food is on the left pixel
+        future_score = score + 100
+    
+    else:
+        future_score = score - 1 # Score will be one less
+
+
     return (head_x, head_y, food_x, food_y, score, 
             dist_left_border, dist_right_border, dist_up_border, dist_down_border,
             dist_body_x[0], dist_body_y[0], dist_body_x[1], dist_body_y[1], 
             dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3], 
-            tail_x, tail_y, horizontal_weight, vertical_weight, length, direction)
+            tail_x, tail_y, horizontal_weight, vertical_weight, length, future_score, left_direction, right_direction, vertical_direction)
 
 
 def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tuple:
@@ -371,7 +409,7 @@ while True:
 
 
 
-    arff_file = 'all_data_snake.arff'
+    arff_file = 'test_keyboard.arf'
 
     # Define ARFF header (modify attributes based on your data)
     header = """@RELATION snake_game
@@ -401,7 +439,12 @@ while True:
     @ATTRIBUTE Horizontal_weight NUMERIC
     @ATTRIBUTE Vertical_weight NUMERIC
     @ATTRIBUTE Length NUMERIC
-    @ATTRIBUTE Direction {RIGHT, LEFT, UP, DOWN}
+    @ATTRIBUTE future_score NUMERIC
+
+
+    @ATTRIBUTE left_direction NUMERIC
+    @ATTRIBUTE right_direction NUMERIC
+    @ATTRIBUTE vertical_direction NUMERIC
 
     @DATA
     """
