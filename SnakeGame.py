@@ -37,6 +37,7 @@ class GameState:
         self.change_to = self.direction
         self.score = 0
         self.first_tick = True
+        self.prev_length = len(self.snake_body)
 
 # Game Over
 def game_over(game):
@@ -253,100 +254,94 @@ def print_state(game):
 
 # TODO: IMPLEMENT HERE THE NEW INTELLIGENT METHOD
 def print_line_data(game):
-    '''
-    This function returns a string containg the most relevant attributes
-    '''
-    if game.first_tick:
-        next_tick_score = game.score - 1
-        score = game.score  
-        game.first_tick = False
-    else:
-        # For subsequent ticks, use the current score as the future score.
-        # (Optionally update previous tick values for later use)
-        score = game.score
-        next_tick_score = game.score
-        game.prev_score = game.score
-        game.prev_direction = game.direction
-        
-        
+    """
+    Saves game state focusing on relevant attributes including score changes.
+    The function ensures that each row's future_score is updated in the next tick.
+    """
+    # Score
+    score = game.score
 
     # Head position
-    head_x = game.snake_pos[0]
-    head_y = game.snake_pos[1]
+    head_x, head_y = game.snake_pos
 
     # Food position
-    food_x = game.food_pos[0]
-    food_y = game.food_pos[1]
-        
-    # Tail position
-    tail = game.snake_body[-1]
-    tail_x = tail[0]
-    tail_y = tail[1]
+    food_x, food_y = game.food_pos
 
-    # Calculating the distance to the borders
+    # Tail position
+    tail_x, tail_y = game.snake_body[-1]
+
+    # Distance to borders
     dist_left_border = head_x
     dist_right_border = FRAME_SIZE_X - head_x
     dist_up_border = head_y
     dist_down_border = FRAME_SIZE_Y - head_y
 
-    # Calculating the 4 closest body points
+    # Closest body points
     dist_body_x, dist_body_y = closest_body_points(head_x, head_y, game.snake_body)
-    # Calculating the weights of the snake
+
+    # Snake weights
     horizontal_weight, vertical_weight = calculate_weights(game)
 
-    # Lenght of the snake
+    # Length of the snake
     length = len(game.snake_body)
 
     # Direction
     direction = game.direction
 
-    # Build the data list in the order defined by the header:
-    game_data = [
-        head_x,             # Head_x
-        head_y,             # Head_y
-        food_x,             # Food_x
-        food_y,             # Food_y
-        score,              # Score
-        dist_left_border,   # Dist_left_border
-        dist_right_border,  # Dist_right_border
-        dist_up_border,    # Dist_top_border
-        dist_down_border, # Dist_bottom_border
-        dist_body_x[0],     # Dist_body_x1
-        dist_body_y[0],     # Dist_body_y1
-        dist_body_x[1],     # Dist_body_x2
-        dist_body_y[1],     # Dist_body_y2
-        dist_body_x[2],     # Dist_body_x3
-        dist_body_y[2],     # Dist_body_y3
-        dist_body_x[3],     # Dist_body_x4
-        dist_body_y[3],     # Dist_body_y4
-        tail_x,             # Tail_x
-        tail_y,             # Tail_y
-        horizontal_weight,  # Horizontal_weight
-        vertical_weight,    # Vertical_weight
-        length,             # Length
-        next_tick_score,    # future_score
-        direction           # direction
-    ]
-    
-    arff_file = 'training_keyboard.arff'
-    header = header = """@RELATION snake_game"""
-    # If the ARFF file does not exist, create it and write the header
+    # Define ARFF header
+    arff_file = "training_keyboard.arff"
+    header = """@RELATION snake_game
+
+@ATTRIBUTE Head_x NUMERIC
+@ATTRIBUTE Head_y NUMERIC
+@ATTRIBUTE Food_x NUMERIC
+@ATTRIBUTE Food_y NUMERIC
+@ATTRIBUTE Score NUMERIC
+
+@ATTRIBUTE Dist_left_border NUMERIC
+@ATTRIBUTE Dist_right_border NUMERIC
+@ATTRIBUTE Dist_top_border NUMERIC
+@ATTRIBUTE Dist_bottom_border NUMERIC
+
+@ATTRIBUTE Dist_body_x1 NUMERIC
+@ATTRIBUTE Dist_body_y1 NUMERIC
+@ATTRIBUTE Tail_x NUMERIC
+@ATTRIBUTE Tail_y NUMERIC
+@ATTRIBUTE Horizontal_weight NUMERIC
+@ATTRIBUTE Vertical_weight NUMERIC
+@ATTRIBUTE Length NUMERIC
+@ATTRIBUTE future_score NUMERIC
+
+@ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
+
+@DATA"""
+
+    # If the ARFF file does not exist, create it with the header
     if not os.path.exists(arff_file):
-        with open(arff_file, 'w') as f:
-            f.write(header)
+        with open(arff_file, "w") as f:
+            f.write(header.strip() + "\n\n")
 
-    # Append data row to ARFF file
-    with open(arff_file, 'a', newline='') as f:
-        data_row = ','.join(map(str, game_data))
-        f.write(data_row + '\n')
-    
+    # Prepare the current row data, without the future score
+    game_data = [
+        head_x, head_y, food_x, food_y, score,
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x, dist_body_y,
+        tail_x, tail_y, horizontal_weight, vertical_weight, length, 0,  
+        direction
+    ]
 
+    # If there is a row that has not been written yet, updates it
+    if hasattr(game, "pending_row"):
+        game.pending_row[-2] = game.score  # Update previous tick's future_score with the current score
+        with open(arff_file, "a") as f:
+            f.write(",".join(map(str, game.pending_row)) + "\n")
 
-    """return (head_x, head_y, food_x, food_y, score, 
-            dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-            dist_body_x[0], dist_body_y[0], dist_body_x[1], dist_body_y[1], 
-            dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3], 
-            tail_x, tail_y, horizontal_weight, vertical_weight, length, direction)"""
+    # Save the current row as pending for the next tick
+    game.pending_row = game_data
+
+    # Return the current row as a CSV string for debugging/logging purposes
+    return ",".join(map(str, game_data))
+
 
 
 def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tuple:
@@ -428,60 +423,9 @@ while True:
 
 
 
-    # arff_file = 'training_keyboard.arff'
-
-    # Define ARFF header (modify attributes based on your data)
-    # header = """@RELATION snake_game
-
-    """@ATTRIBUTE Head_x NUMERIC
-    @ATTRIBUTE Head_y NUMERIC
-    @ATTRIBUTE Food_x NUMERIC
-    @ATTRIBUTE Food_y NUMERIC
-    @ATTRIBUTE Score NUMERIC
-
-    @ATTRIBUTE Dist_left_border NUMERIC
-    @ATTRIBUTE Dist_right_border NUMERIC
-    @ATTRIBUTE Dist_top_border NUMERIC
-    @ATTRIBUTE Dist_bottom_border NUMERIC
-
-    @ATTRIBUTE Dist_body_x1 NUMERIC
-    @ATTRIBUTE Dist_body_y1 NUMERIC
-    @ATTRIBUTE Dist_body_x2 NUMERIC
-    @ATTRIBUTE Dist_body_y2 NUMERIC
-    @ATTRIBUTE Dist_body_x3 NUMERIC
-    @ATTRIBUTE Dist_body_y3 NUMERIC
-    @ATTRIBUTE Dist_body_x4 NUMERIC
-    @ATTRIBUTE Dist_body_y4 NUMERIC
-
-    @ATTRIBUTE Tail_x NUMERIC
-    @ATTRIBUTE Tail_y NUMERIC
-    @ATTRIBUTE Horizontal_weight NUMERIC
-    @ATTRIBUTE Vertical_weight NUMERIC
-    @ATTRIBUTE Length NUMERIC
-    @ATTRIBUTE future_score NUMERIC
-
-
-    @ATTRIBUTE direction
-
-    @DATA"""
- 
-
-    """# Check if file exists, if not, write header
-    if not os.path.exists(arff_file):
-        with open(arff_file, 'w') as f:
-            f.write(header)
-
-    previous_score = 0
-
-    # Append data in ARFF format
-    with open(arff_file, 'a', newline='') as f:
-        data_row = ','.join(map(str, game_data))  # Convert list to CSV row
-        f.write(data_row + '\n')  # Append to ARFF file
-
-    # Movement being controlled by the move_tutorial_1 method
-    # game.direction = move_tutorial_1(game)"""
-
+    # Printing the data
     print_line_data(game)
+
     # Moving the snake
     if game.direction == 'UP':
         game.snake_pos[1] -= 10
