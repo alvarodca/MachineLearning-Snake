@@ -36,6 +36,7 @@ class GameState:
         self.direction = 'RIGHT'
         self.change_to = self.direction
         self.score = 0
+        self.first_tick = True
 
 # Game Over
 def game_over(game):
@@ -255,11 +256,19 @@ def print_line_data(game):
     '''
     This function returns a string containg the most relevant attributes
     '''
-    direction = game.direction
-
-
-
-    score = game.score
+    if game.first_tick:
+        next_tick_score = game.score - 1
+        score = game.score  
+        game.first_tick = False
+    else:
+        # For subsequent ticks, use the current score as the future score.
+        # (Optionally update previous tick values for later use)
+        score = game.score
+        next_tick_score = game.score
+        game.prev_score = game.score
+        game.prev_direction = game.direction
+        
+        
 
     # Head position
     head_x = game.snake_pos[0]
@@ -268,7 +277,7 @@ def print_line_data(game):
     # Food position
     food_x = game.food_pos[0]
     food_y = game.food_pos[1]
-    
+        
     # Tail position
     tail = game.snake_body[-1]
     tail_x = tail[0]
@@ -288,28 +297,56 @@ def print_line_data(game):
     # Lenght of the snake
     length = len(game.snake_body)
 
-    # Calculating future score
-    if head_x == food_x and head_y == food_y + 10 and direction == "UP": # Food is on the upper pixel
-        future_score = score + 100
+    # Direction
+    direction = game.direction
+
+    # Build the data list in the order defined by the header:
+    game_data = [
+        head_x,             # Head_x
+        head_y,             # Head_y
+        food_x,             # Food_x
+        food_y,             # Food_y
+        score,              # Score
+        dist_left_border,   # Dist_left_border
+        dist_right_border,  # Dist_right_border
+        dist_up_border,    # Dist_top_border
+        dist_down_border, # Dist_bottom_border
+        dist_body_x[0],     # Dist_body_x1
+        dist_body_y[0],     # Dist_body_y1
+        dist_body_x[1],     # Dist_body_x2
+        dist_body_y[1],     # Dist_body_y2
+        dist_body_x[2],     # Dist_body_x3
+        dist_body_y[2],     # Dist_body_y3
+        dist_body_x[3],     # Dist_body_x4
+        dist_body_y[3],     # Dist_body_y4
+        tail_x,             # Tail_x
+        tail_y,             # Tail_y
+        horizontal_weight,  # Horizontal_weight
+        vertical_weight,    # Vertical_weight
+        length,             # Length
+        next_tick_score,    # future_score
+        direction           # direction
+    ]
     
-    elif head_x == food_x and head_y == food_y - 10 and direction == "DOWN": # Food is on the lower pixel
-        future_score = score + 100
+    arff_file = 'training_keyboard.arff'
+    header = header = """@RELATION snake_game"""
+    # If the ARFF file does not exist, create it and write the header
+    if not os.path.exists(arff_file):
+        with open(arff_file, 'w') as f:
+            f.write(header)
 
-    elif head_x == food_x + 10 and head_y == food_y and direction == "RIGHT": # Food is on the right pixel
-        future_score = score + 100
-
-    elif head_x == food_x - 10 and head_y == food_y and direction == "LEFT": # Food is on the left pixel
-        future_score = score + 100
+    # Append data row to ARFF file
+    with open(arff_file, 'a', newline='') as f:
+        data_row = ','.join(map(str, game_data))
+        f.write(data_row + '\n')
     
-    else:
-        future_score = score - 1 # Score will be one less
 
 
-    return (head_x, head_y, food_x, food_y, score, 
+    """return (head_x, head_y, food_x, food_y, score, 
             dist_left_border, dist_right_border, dist_up_border, dist_down_border,
             dist_body_x[0], dist_body_y[0], dist_body_x[1], dist_body_y[1], 
             dist_body_x[2], dist_body_y[2], dist_body_x[3], dist_body_y[3], 
-            tail_x, tail_y, horizontal_weight, vertical_weight, length, future_score, direction)
+            tail_x, tail_y, horizontal_weight, vertical_weight, length, direction)"""
 
 
 def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tuple:
@@ -391,12 +428,12 @@ while True:
 
 
 
-    arff_file = 'training2_keyboard.arff'
+    # arff_file = 'training_keyboard.arff'
 
     # Define ARFF header (modify attributes based on your data)
-    header = """@RELATION snake_game
+    # header = """@RELATION snake_game
 
-    @ATTRIBUTE Head_x NUMERIC
+    """@ATTRIBUTE Head_x NUMERIC
     @ATTRIBUTE Head_y NUMERIC
     @ATTRIBUTE Food_x NUMERIC
     @ATTRIBUTE Food_y NUMERIC
@@ -424,27 +461,27 @@ while True:
     @ATTRIBUTE future_score NUMERIC
 
 
-    @ATTRIBUTE left_direction NUMERIC
-    @ATTRIBUTE right_direction NUMERIC
-    @ATTRIBUTE vertical_direction NUMERIC
+    @ATTRIBUTE direction
 
-    @DATA
-    """
+    @DATA"""
+ 
 
-    # Check if file exists, if not, write header
+    """# Check if file exists, if not, write header
     if not os.path.exists(arff_file):
         with open(arff_file, 'w') as f:
             f.write(header)
 
+    previous_score = 0
+
     # Append data in ARFF format
     with open(arff_file, 'a', newline='') as f:
-        data_row = ','.join(map(str, print_line_data(game)))  # Convert list to CSV-style row
-        f.write(data_row + '\n')  # Append new instance
-
+        data_row = ','.join(map(str, game_data))  # Convert list to CSV row
+        f.write(data_row + '\n')  # Append to ARFF file
 
     # Movement being controlled by the move_tutorial_1 method
-    # game.direction = move_tutorial_1(game)
+    # game.direction = move_tutorial_1(game)"""
 
+    print_line_data(game)
     # Moving the snake
     if game.direction == 'UP':
         game.snake_pos[1] -= 10
