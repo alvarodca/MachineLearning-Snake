@@ -1,2 +1,3 @@
-*.arff
+/filter_data_snake_manual1.arff
+/filter_data_snake_manual2.arff
 *.csv
