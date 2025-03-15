@@ -277,7 +277,11 @@ def print_line_data(game):
     dist_down_border = FRAME_SIZE_Y - head_y
 
     # Closest body points
-    dist_body_x, dist_body_y = closest_body_points(head_x, head_y, game.snake_body)
+    dist_body = closest_body_points(head_x, head_y, game.snake_body)
+    dist_body_x1, dist_body_y1 = dist_body[0][0], dist_body[1][0] # Obtaining the first closest x and y
+    dist_body_x2, dist_body_y2 = dist_body[0][1], dist_body[1][1]
+    
+
 
     # Snake weights
     horizontal_weight, vertical_weight = calculate_weights(game)
@@ -288,33 +292,37 @@ def print_line_data(game):
     # Direction
     direction = game.direction
 
-    # Define ARFF header
+    # Defining ARFF header
     arff_file = "training_keyboard.arff"
     header = """@RELATION snake_game
 
-@ATTRIBUTE Head_x NUMERIC
-@ATTRIBUTE Head_y NUMERIC
-@ATTRIBUTE Food_x NUMERIC
-@ATTRIBUTE Food_y NUMERIC
-@ATTRIBUTE Score NUMERIC
+    @ATTRIBUTE Head_x NUMERIC
+    @ATTRIBUTE Head_y NUMERIC
+    @ATTRIBUTE Food_x NUMERIC
+    @ATTRIBUTE Food_y NUMERIC
+    @ATTRIBUTE Score NUMERIC
 
-@ATTRIBUTE Dist_left_border NUMERIC
-@ATTRIBUTE Dist_right_border NUMERIC
-@ATTRIBUTE Dist_top_border NUMERIC
-@ATTRIBUTE Dist_bottom_border NUMERIC
+    @ATTRIBUTE Dist_left_border NUMERIC
+    @ATTRIBUTE Dist_right_border NUMERIC
+    @ATTRIBUTE Dist_top_border NUMERIC
+    @ATTRIBUTE Dist_bottom_border NUMERIC
 
-@ATTRIBUTE Dist_body_x1 NUMERIC
-@ATTRIBUTE Dist_body_y1 NUMERIC
-@ATTRIBUTE Tail_x NUMERIC
-@ATTRIBUTE Tail_y NUMERIC
-@ATTRIBUTE Horizontal_weight NUMERIC
-@ATTRIBUTE Vertical_weight NUMERIC
-@ATTRIBUTE Length NUMERIC
-@ATTRIBUTE future_score NUMERIC
+    @ATTRIBUTE Dist_body_x1 NUMERIC
+    @ATTRIBUTE Dist_body_y1 NUMERIC
+    @ATTRIBUTE Dist_body_x2 NUMERIC
+    @ATTRIBUTE Dist_body_y2 NUMERIC
+   
+    
+    @ATTRIBUTE Tail_x NUMERIC
+    @ATTRIBUTE Tail_y NUMERIC
+    @ATTRIBUTE Horizontal_weight NUMERIC
+    @ATTRIBUTE Vertical_weight NUMERIC
+    @ATTRIBUTE Length NUMERIC
+    @ATTRIBUTE future_score NUMERIC
 
-@ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
+    @ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
 
-@DATA"""
+    @DATA"""
 
     # If the ARFF file does not exist, create it with the header
     if not os.path.exists(arff_file):
@@ -325,7 +333,7 @@ def print_line_data(game):
     game_data = [
         head_x, head_y, food_x, food_y, score,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x, dist_body_y,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,
         tail_x, tail_y, horizontal_weight, vertical_weight, length, 0,  
         direction
     ]
