@@ -293,7 +293,7 @@ def print_line_data(game):
     direction = game.direction
 
     # Defining ARFF header
-    arff_file = "training_keyboard.arff"
+    arff_file = "training2_keyboard.arff"
     header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
@@ -380,8 +380,8 @@ def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tupl
     for elem in closest:
         if elem: # Checks the element is not none
             dist, x, y = elem
-            closest_x.append(int(x))
-            closest_y.append(int(y))
+            closest_x.append(int(head_x-x))
+            closest_y.append(int(head_y-y))
         
     # Makes sure the list is of length of 4
     while len(closest_x) < 4:
