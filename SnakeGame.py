@@ -293,7 +293,7 @@ def print_line_data(game):
     direction = game.direction
 
     # Defining ARFF header
-    arff_file = "training2_keyboard.arff"
+    arff_file = "training_keyboard.arff"
     header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
