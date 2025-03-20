@@ -6,6 +6,7 @@ Machine Learning Classes - University Carlos III of Madrid
 """
 
 import pygame, sys, time, random, csv, os
+from wekaI import Weka
 
 # DIFFICULTY settings
 # Easy      ->  10
@@ -50,6 +51,7 @@ def game_over(game):
     show_score(game, 0, WHITE, 'times', 20)
     pygame.display.flip()
     time.sleep(3)
+    weka.stop_jvm() # Stopping weka
     pygame.quit()
     sys.exit()
 
@@ -88,26 +90,40 @@ def move_tutorial_1(game):
     the position of the food, the directions that is being blocked and the weights 
     of the snake in both axis
     '''
-
+    
     # Get the most recent data
     data = print_line_data(game)
+    
+    print(f"Data from print_line_data: {data}")
 
-    # Sving the data
+
+    # Saving the data
     head_x = data[1]
     head_y = data[2]
     food_x = data[3]
     food_y = data[4]
-    body_x = [data[10], data[12], data[14], data[16]]
-    body_y = [data[11], data[13], data[15], data[17]]
+    #body_x = [data[10], data[12], data[14], data[16]]
+    #body_y = [data[11], data[13], data[15], data[17]]
     dist_border = [data[6], data[7], data[8], data[9]]
-    tail_x = data[18]
-    tail_y = data[19]
-    hor_weight = data[20]
-    ver_weight = data[21]
+    tail_x = data[14]
+    tail_y = data[15]
+    hor_weight = data[16]
+    ver_weight = data[17]
+
+    # Closest body points
+    body_x,body_y = closest_body_points(head_x, head_y, game.snake_body)
+    print(f"Closest body points: {body_x}, {body_y}")
+
+    print(f"Current Direction: {game.direction}")
+    print(f"Food Position: {game.food_pos}")
+    
+
 
     # Calculate the blockings
     blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border, tail_x, tail_y)
-    
+    print(f"Blocked directions: {blocked}")
+
+
     # Getting the preferred directions to go depending on where the food is
     preferred_directions = []
     if head_x < food_x:
@@ -118,6 +134,8 @@ def move_tutorial_1(game):
         preferred_directions.append("UP")
     if head_y < food_y:
         preferred_directions.append("DOWN")
+    print(f"Preferred directions: {preferred_directions}")
+
 
     # Getting the number of blocked directions
     blocked_directions = 0
@@ -144,12 +162,16 @@ def move_tutorial_1(game):
     # Choose the preferred direction if it is not being blocked
     for direction in preferred_directions:
         if not blocked[direction]:
+            print(f"Chosen direction (preferred): {direction}")
             return direction
 
     # If all preferred directions are blocked, choose any available direction
     for direction in ["RIGHT", "LEFT", "UP", "DOWN"]:
         if not blocked[direction]:
+            print(f"Chosen direction (fallback): {direction}")
             return direction
+        
+    return game.direction
 
 
 def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dist_border: list, tail_x: int, tail_y: int) -> dict: 
@@ -215,8 +237,8 @@ def calculate_weights(game) -> tuple:
 
     # Getting the closest body points to the head
     body = game.snake_body[:int(len(game.snake_body))]
-    head_x = game.snake_pos[0]
-    head_y = game.snake_pos[1]
+    head_x = game.snake_body[0][0]
+    head_y = game.snake_body[0][1]
 
     # Looping thorugh all body parts
     for i in range(len(body)):
@@ -262,8 +284,10 @@ def print_line_data(game):
     score = game.score
 
     # Head position
-    head_x, head_y = game.snake_pos
-
+  
+    head_x = game.snake_body[0][0]
+    head_y = game.snake_body[0][1]
+    
     # Food position
     food_x, food_y = game.food_pos
 
@@ -276,11 +300,17 @@ def print_line_data(game):
     dist_up_border = head_y
     dist_down_border = FRAME_SIZE_Y - head_y
 
-    # Closest body points
-    dist_body = closest_body_points(head_x, head_y, game.snake_body)
-    dist_body_x1, dist_body_y1 = dist_body[0][0], dist_body[1][0] # Obtaining the first closest x and y
-    dist_body_x2, dist_body_y2 = dist_body[0][1], dist_body[1][1]
+    # Distance to the closest body parts
+    distances = distances_to_head(head_x, head_y, game.snake_body)
+    body_x1, body_y1 = distances[0][1], distances[0][2]
+    body_x2, body_y2 = distances[1][1], distances[1][2]
     
+    # Distance to the body points
+    dist_body_x1 = head_x - body_x1 
+    dist_body_y1 = head_y - body_y1
+
+    dist_body_x2 = head_x - body_x2
+    dist_body_y2 = head_y - body_y2
 
 
     # Snake weights
@@ -293,7 +323,7 @@ def print_line_data(game):
     direction = game.direction
 
     # Defining ARFF header
-    arff_file = "training_keyboard.arff"
+    arff_file = "training2_keyboard.arff"
     header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
@@ -337,6 +367,7 @@ def print_line_data(game):
         tail_x, tail_y, horizontal_weight, vertical_weight, length, 0,  
         direction
     ]
+                 
 
     # If there is a row that has not been written yet, updates it
     if hasattr(game, "pending_row"):
@@ -351,11 +382,16 @@ def print_line_data(game):
     return ",".join(map(str, game_data))
 
 
+    # Write the current row to the ARFF file
+    with open(arff_file, "a") as f:
+        f.write(game_data_str + "\n")
 
-def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tuple:
+    return game_data
+
+
+def distances_to_head(head_x: int, head_y: int, snake_body: list[int]) -> tuple:
     """
-    Takes the position of the head of the snake and its body and returns the 
-    4 closest body points to the head
+    Computes the distance of each of the body parts of the snake to the head
     """
     # Initializing an empty list
     distances = []
@@ -367,10 +403,18 @@ def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tupl
         if dist != 0:
             distances.append((dist,x,y))
 
-    # Sorting the distances in ascending order
-    distances.sort()
+    return distances
+    
 
-    # Obtaining the 4 smallest distances, if the list is smaller it will only return the existent values
+def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tuple:
+    """
+    Takes the position of the head of the snake and its body and returns the distance to
+    4 closest body points to the head
+    """
+    # Initializing an empty list
+    distances = distances_to_head(head_x, head_y, snake_body)
+
+    # Obtaining the 4 closest distances, if the list is smaller it will only return the existent values
     closest = distances[:4]
 
     # Returning the x and y coordinates
@@ -380,8 +424,8 @@ def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tupl
     for elem in closest:
         if elem: # Checks the element is not none
             dist, x, y = elem
-            closest_x.append(int(head_x-x))
-            closest_y.append(int(head_y-y))
+            closest_x.append(int(x))
+            closest_y.append(int(y))
         
     # Makes sure the list is of length of 4
     while len(closest_x) < 4:
@@ -389,6 +433,9 @@ def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tupl
        closest_y.append(100_000)   
 
     return closest_x, closest_y
+
+
+
 
 # Checks for errors encountered
 check_errors = pygame.init()
@@ -409,6 +456,11 @@ fps_controller = pygame.time.Clock()
 
 # Main logic
 game = GameState((FRAME_SIZE_X,FRAME_SIZE_Y))
+
+weka = Weka()
+weka.start_jvm()
+
+
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:

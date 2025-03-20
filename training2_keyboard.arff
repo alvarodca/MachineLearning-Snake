@@ -1,0 +1,30 @@
+@RELATION snake_game
+
+    @ATTRIBUTE Head_x NUMERIC
+    @ATTRIBUTE Head_y NUMERIC
+    @ATTRIBUTE Food_x NUMERIC
+    @ATTRIBUTE Food_y NUMERIC
+    @ATTRIBUTE Score NUMERIC
+
+    @ATTRIBUTE Dist_left_border NUMERIC
+    @ATTRIBUTE Dist_right_border NUMERIC
+    @ATTRIBUTE Dist_top_border NUMERIC
+    @ATTRIBUTE Dist_bottom_border NUMERIC
+
+    @ATTRIBUTE Dist_body_x1 NUMERIC
+    @ATTRIBUTE Dist_body_y1 NUMERIC
+    @ATTRIBUTE Dist_body_x2 NUMERIC
+    @ATTRIBUTE Dist_body_y2 NUMERIC
+   
+    
+    @ATTRIBUTE Tail_x NUMERIC
+    @ATTRIBUTE Tail_y NUMERIC
+    @ATTRIBUTE Horizontal_weight NUMERIC
+    @ATTRIBUTE Vertical_weight NUMERIC
+    @ATTRIBUTE Length NUMERIC
+    @ATTRIBUTE future_score NUMERIC
+
+    @ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
+
+    @DATA
+
