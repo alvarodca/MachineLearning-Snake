@@ -8,6 +8,8 @@ Machine Learning Classes - University Carlos III of Madrid
 import pygame, sys, time, random, csv, os
 from wekaI import Weka
 
+weka = Weka()
+weka.start_jvm()
 # DIFFICULTY settings
 # Easy      ->  10
 # Medium    ->  25
@@ -336,7 +338,7 @@ def print_line_data(game):
     direction = game.direction
 
     # Defining ARFF header
-    arff_file = "training2_keyboard.arff"
+    arff_file = "training5_keyboard.arff"
     header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
@@ -468,9 +470,6 @@ fps_controller = pygame.time.Clock()
 # Main logic
 game = GameState((FRAME_SIZE_X,FRAME_SIZE_Y))
 
-weka = Weka()
-weka.start_jvm()
-
 
 while True:
     for event in pygame.event.get():
@@ -481,13 +480,12 @@ while True:
             # Esc -> Create event to quit the game
             if event.key == pygame.K_ESCAPE:
                 pygame.event.post(pygame.event.Event(pygame.QUIT))
-    #game.direction = move_tutorial_1(game)
-    game.direction = move_keyboard(game, event)    
+    game.direction = move_tutorial_1(game)
+    #game.direction = move_keyboard(game, event)    
     
     
-    #game.direction = move_tutorial_1(game)
     # Printing the data
-    print_line_data(game)
+    #print_line_data(game)
     
 
     # Moving the snake
