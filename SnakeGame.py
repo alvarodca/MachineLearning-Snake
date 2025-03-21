@@ -14,7 +14,7 @@ from wekaI import Weka
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 20
+DIFFICULTY = 25
 
 # Window size
 FRAME_SIZE_X = 480
@@ -94,34 +94,29 @@ def move_tutorial_1(game):
     # Get the most recent data
     data = print_line_data(game)
     
-    print(f"Data from print_line_data: {data}")
-
+    
 
     # Saving the data
-    head_x = data[1]
-    head_y = data[2]
-    food_x = data[3]
-    food_y = data[4]
+    head_x = data[0]
+    head_y = data[1]
+    food_x = data[2]
+    food_y = data[3]
     #body_x = [data[10], data[12], data[14], data[16]]
     #body_y = [data[11], data[13], data[15], data[17]]
-    dist_border = [data[6], data[7], data[8], data[9]]
-    tail_x = data[14]
-    tail_y = data[15]
-    hor_weight = data[16]
-    ver_weight = data[17]
+    dist_border = [data[5], data[6], data[7], data[8]]
+    tail_x = data[17]
+    tail_y = data[18]
+    hor_weight = data[19]
+    ver_weight = data[20]
 
     # Closest body points
     body_x,body_y = closest_body_points(head_x, head_y, game.snake_body)
-    print(f"Closest body points: {body_x}, {body_y}")
-
-    print(f"Current Direction: {game.direction}")
-    print(f"Food Position: {game.food_pos}")
-    
+     
 
 
     # Calculate the blockings
     blocked = calculate_blocking(head_x, head_y, body_x, body_y, dist_border, tail_x, tail_y)
-    print(f"Blocked directions: {blocked}")
+    
 
 
     # Getting the preferred directions to go depending on where the food is
@@ -134,7 +129,7 @@ def move_tutorial_1(game):
         preferred_directions.append("UP")
     if head_y < food_y:
         preferred_directions.append("DOWN")
-    print(f"Preferred directions: {preferred_directions}")
+    
 
 
     # Getting the number of blocked directions
@@ -159,19 +154,19 @@ def move_tutorial_1(game):
         if possible_directions:
             return random.choice(possible_directions)
 
+   
+
     # Choose the preferred direction if it is not being blocked
     for direction in preferred_directions:
         if not blocked[direction]:
-            print(f"Chosen direction (preferred): {direction}")
             return direction
 
     # If all preferred directions are blocked, choose any available direction
     for direction in ["RIGHT", "LEFT", "UP", "DOWN"]:
         if not blocked[direction]:
-            print(f"Chosen direction (fallback): {direction}")
             return direction
         
-    return game.direction
+    return direction
 
 
 def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dist_border: list, tail_x: int, tail_y: int) -> dict: 
@@ -180,10 +175,11 @@ def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dis
     """
 
     blocked = {"LEFT": False, "RIGHT": False, "UP": False, "DOWN": False}
+    
 
     # Calculating which directions are blocked
     for i in range(len(body_x)): 
-        # Top and bottom blocking
+               
         if body_x[i] == head_x:
             if abs(body_y[i] - 10 - head_y) <= 5:
                 blocked["DOWN"] = True
@@ -222,6 +218,8 @@ def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dis
         blocked["UP"] = True
     if dist_border[3] < 15: 
         blocked["DOWN"] = True
+
+    
 
     return blocked
 
@@ -304,14 +302,29 @@ def print_line_data(game):
     distances = distances_to_head(head_x, head_y, game.snake_body)
     body_x1, body_y1 = distances[0][1], distances[0][2]
     body_x2, body_y2 = distances[1][1], distances[1][2]
+
+
+    if len(distances) < 4:
+        dist_body_x3, dist_body_y3 = 500, 500
+        dist_body_x4, dist_body_y4 = 500, 500
+
+    else:
+        body_x3, body_y3 = distances[2][1], distances[2][2]
+        body_x4, body_y4 = distances[3][1], distances[3][1]
+
+        dist_body_x3 = head_x - body_x3
+        dist_body_y3 = head_y - body_y3
+
+        dist_body_x4 = head_x - body_x4
+        dist_body_y4 = head_y - body_y4
     
+
     # Distance to the body points
     dist_body_x1 = head_x - body_x1 
     dist_body_y1 = head_y - body_y1
 
     dist_body_x2 = head_x - body_x2
     dist_body_y2 = head_y - body_y2
-
 
     # Snake weights
     horizontal_weight, vertical_weight = calculate_weights(game)
@@ -341,6 +354,10 @@ def print_line_data(game):
     @ATTRIBUTE Dist_body_y1 NUMERIC
     @ATTRIBUTE Dist_body_x2 NUMERIC
     @ATTRIBUTE Dist_body_y2 NUMERIC
+    @ATTRIBUTE Dist_body_x3 NUMERIC
+    @ATTRIBUTE Dist_body_y3 NUMERIC
+    @ATTRIBUTE Dist_body_x4 NUMERIC
+    @ATTRIBUTE Dist_body_y4 NUMERIC
    
     
     @ATTRIBUTE Tail_x NUMERIC
@@ -363,15 +380,15 @@ def print_line_data(game):
     game_data = [
         head_x, head_y, food_x, food_y, score,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,
-        tail_x, tail_y, horizontal_weight, vertical_weight, length, 0,  
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,dist_body_x3, dist_body_y3,
+        dist_body_x4, dist_body_y4,tail_x, tail_y, horizontal_weight, vertical_weight, length, 0,  
         direction
     ]
                  
 
     # If there is a row that has not been written yet, updates it
     if hasattr(game, "pending_row"):
-        game.pending_row[-2] = game.score  # Update previous tick's future_score with the current score
+        game.pending_row[-2] = score  # Update previous tick's future_score with the current score
         with open(arff_file, "a") as f:
             f.write(",".join(map(str, game.pending_row)) + "\n")
 
@@ -379,13 +396,6 @@ def print_line_data(game):
     game.pending_row = game_data
 
     # Return the current row as a CSV string for debugging/logging purposes
-    return ",".join(map(str, game_data))
-
-
-    # Write the current row to the ARFF file
-    with open(arff_file, "a") as f:
-        f.write(game_data_str + "\n")
-
     return game_data
 
 
@@ -402,6 +412,7 @@ def distances_to_head(head_x: int, head_y: int, snake_body: list[int]) -> tuple:
         # Ensures the distance of the head is not saved as closest point
         if dist != 0:
             distances.append((dist,x,y))
+
 
     return distances
     
@@ -424,8 +435,8 @@ def closest_body_points(head_x: int, head_y: int, snake_body: list[int]) -> tupl
     for elem in closest:
         if elem: # Checks the element is not none
             dist, x, y = elem
-            closest_x.append(int(x))
-            closest_y.append(int(y))
+            closest_x.append(x)
+            closest_y.append(y)
         
     # Makes sure the list is of length of 4
     while len(closest_x) < 4:
@@ -470,21 +481,14 @@ while True:
             # Esc -> Create event to quit the game
             if event.key == pygame.K_ESCAPE:
                 pygame.event.post(pygame.event.Event(pygame.QUIT))
-        # CALLING MOVE METHOD
-        game.direction = move_keyboard(game, event)
-
-    # Storing the information on the data csv, the a indicates append so data is not overwritten   
-    """with open('data.csv', 'a', newline= '') as csvfile:
-        # Writing the corresponding information to each of the rows
-        writer = csv.writer(csvfile)
-        writer.writerow(list(print_line_data(game)))
-        # Closing the file
-        csvfile.close()"""
-
-
-
+    #game.direction = move_tutorial_1(game)
+    game.direction = move_keyboard(game, event)    
+    
+    
+    #game.direction = move_tutorial_1(game)
     # Printing the data
     print_line_data(game)
+    
 
     # Moving the snake
     if game.direction == 'UP':
@@ -495,6 +499,8 @@ while True:
         game.snake_pos[0] -= 10
     if game.direction == 'RIGHT':
         game.snake_pos[0] += 10
+    
+    
 
     # Snake body growing mechanism
     game.snake_body.insert(0, list(game.snake_pos))
