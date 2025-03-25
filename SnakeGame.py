@@ -16,7 +16,7 @@ weka.start_jvm()
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 20
+DIFFICULTY = 100
 
 # Window size
 FRAME_SIZE_X = 480
@@ -46,7 +46,7 @@ class GameState:
         self.previous_data = None
 
 
-        self.file = "training_player.arff"
+        self.file = "training_computer.arff"
 
         header = """@RELATION snake_game
 
@@ -133,7 +133,7 @@ def move_keyboard(game, event):
     # Whenever a key is pressed down
     change_to = game.direction
     if event.type == pygame.KEYDOWN:
-        game.previous_direction = game.direction
+        game.prev_direction = game.direction
         # W -> Up; S -> Down; A -> Left; D -> Right
         if (event.key == pygame.K_UP or event.key == ord('w')) and game.direction != 'DOWN':
             change_to = 'UP'
@@ -152,6 +152,8 @@ def move_tutorial_1(game):
     the position of the food, the directions that is being blocked and the weights 
     of the snake in both axis
     ''' 
+    game.prev_direction = game.direction 
+
     # Head position
   
     head_x = game.snake_body[0][0]
@@ -412,7 +414,7 @@ def print_line_data(game):
     direction = game.direction
 
     # One hot encoding previous direction
-    prev_direction = game.direction
+    prev_direction = game.prev_direction
     if prev_direction == "UP":
         prev_up,prev_down,prev_right = 1,0,0
 
@@ -527,8 +529,9 @@ while True:
                 pygame.event.post(pygame.event.Event(pygame.QUIT))
 
     game.prev_direction = game.direction
-    #game.direction = move_tutorial_1(game)
-    game.direction = move_keyboard(game, event)    
+    game.direction = move_tutorial_1(game)
+    #game.direction = move_keyboard(game, event)    
+    
     
     
     # Printing the data
