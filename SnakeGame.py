@@ -16,7 +16,7 @@ weka.start_jvm()
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 25
+DIFFICULTY = 100
 
 # Window size
 FRAME_SIZE_X = 480
@@ -37,13 +37,72 @@ class GameState:
         self.food_pos = [random.randrange(1, (FRAME_SIZE[0]//10)) * 10, random.randrange(1, (FRAME_SIZE[1]//10)) * 10]
         self.food_spawn = True
         self.direction = 'RIGHT'
+        self.prev_direction = self.direction
         self.change_to = self.direction
         self.score = 0
         self.first_tick = True
         self.prev_length = len(self.snake_body)
+        # Storing the previous line of data for storing the score 
+        self.previous_data = None
+
+
+        self.file = "training_computer.arff"
+
+        header = """@RELATION snake_game
+
+    @ATTRIBUTE Head_x NUMERIC
+    @ATTRIBUTE Head_y NUMERIC
+    @ATTRIBUTE Food_x NUMERIC
+    @ATTRIBUTE Food_y NUMERIC
+    @ATTRIBUTE Score NUMERIC
+
+    @ATTRIBUTE Dist_left_border NUMERIC
+    @ATTRIBUTE Dist_right_border NUMERIC
+    @ATTRIBUTE Dist_top_border NUMERIC
+    @ATTRIBUTE Dist_bottom_border NUMERIC
+
+    @ATTRIBUTE Dist_body_x1 NUMERIC
+    @ATTRIBUTE Dist_body_y1 NUMERIC
+    @ATTRIBUTE Dist_body_x2 NUMERIC
+    @ATTRIBUTE Dist_body_y2 NUMERIC
+    @ATTRIBUTE Dist_body_x3 NUMERIC
+    @ATTRIBUTE Dist_body_y3 NUMERIC
+    @ATTRIBUTE Dist_body_x4 NUMERIC
+    @ATTRIBUTE Dist_body_y4 NUMERIC
+   
+    
+    @ATTRIBUTE Tail_x NUMERIC
+    @ATTRIBUTE Tail_y NUMERIC
+    @ATTRIBUTE Dist_Tail_x NUMERIC
+    @ATTRIBUTE Dist_Tail_y NUMERIC
+    @ATTRIBUTE Horizontal_weight NUMERIC
+    @ATTRIBUTE Vertical_weight NUMERIC
+    @ATTRIBUTE Length NUMERIC
+    @ATTRIBUTE Prev_UP NUMERIC
+    @ATTRIBUTE Prev_DOWN NUMERIC
+    @ATTRIBUTE Prev_RIGHT NUMERIC
+ 
+    @ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
+    @ATTRIBUTE future_score NUMERIC
+
+    @DATA"""
+
+        # If the ARFF file does not exist, create it with the header
+        if not os.path.exists(self.file):
+            with open(self.file, "w") as f:
+                f.write(header.strip() + "\n\n")
+
+        # Open the ARFF file
+        self.arff_file = open(self.file, 'a')
 
 # Game Over
 def game_over(game):
+
+    if game.previous_data:
+        game.previous_data.append(-1)  
+        game.arff_file.write(','.join(map(str, game.previous_data)) + '\n')
+
+
     my_font = pygame.font.SysFont('times new roman', 90)
     game_over_surface = my_font.render('YOU DIED', True, WHITE)
     game_over_rect = game_over_surface.get_rect()
@@ -74,6 +133,7 @@ def move_keyboard(game, event):
     # Whenever a key is pressed down
     change_to = game.direction
     if event.type == pygame.KEYDOWN:
+        game.previous_direction = game.direction
         # W -> Up; S -> Down; A -> Left; D -> Right
         if (event.key == pygame.K_UP or event.key == ord('w')) and game.direction != 'DOWN':
             change_to = 'UP'
@@ -91,25 +151,34 @@ def move_tutorial_1(game):
     Hard-coded method to move the snake automatically. It mainly takes into account
     the position of the food, the directions that is being blocked and the weights 
     of the snake in both axis
-    '''
+    ''' 
+    # Head position
+  
+    head_x = game.snake_body[0][0]
+    head_y = game.snake_body[0][1]
     
-    # Get the most recent data
-    data = print_line_data(game)
-    
-    
+    # Food position
+    food_x, food_y = game.food_pos
 
-    # Saving the data
-    head_x = data[0]
-    head_y = data[1]
-    food_x = data[2]
-    food_y = data[3]
-    #body_x = [data[10], data[12], data[14], data[16]]
-    #body_y = [data[11], data[13], data[15], data[17]]
-    dist_border = [data[5], data[6], data[7], data[8]]
-    tail_x = data[17]
-    tail_y = data[18]
-    hor_weight = data[19]
-    ver_weight = data[20]
+    # Tail position
+    tail_x, tail_y = game.snake_body[-1]
+
+    # Distance to borders
+    dist_left_border = head_x
+    dist_right_border = FRAME_SIZE_X - head_x
+    dist_up_border = head_y
+    dist_down_border = FRAME_SIZE_Y - head_y
+
+    # Saving the distance to borders in a list
+    dist_border = [dist_left_border, dist_right_border, dist_up_border, dist_down_border] 
+
+    # Snake weights
+    hor_weight, ver_weight = calculate_weights(game)
+
+
+    # Direction
+    direction = game.direction
+     
 
     # Closest body points
     body_x,body_y = closest_body_points(head_x, head_y, game.snake_body)
@@ -241,7 +310,7 @@ def calculate_weights(game) -> tuple:
     head_y = game.snake_body[0][1]
 
     # Looping thorugh all body parts
-    for i in range(len(body)):
+    for i in range(len(body)//2):
         # Adding 1 to the horizontal weight if the body part is to the right 
         # of the head and -1 if it is to the left
         if body[i][0] > head_x: 
@@ -263,7 +332,7 @@ def calculate_weights(game) -> tuple:
     return horizontal, vertical    
 
 
-# PRINTING DATA FROM GAME STATE
+"""# PRINTING DATA FROM GAME STATE
 def print_state(game):
     print("--------GAME STATE--------")
     print("FrameSize:", FRAME_SIZE_X, FRAME_SIZE_Y)
@@ -271,7 +340,7 @@ def print_state(game):
     print("Snake X:", game.snake_pos[0], ", Snake Y:", game.snake_pos[1])
     print("Snake Body:", game.snake_body)
     print("Food X:", game.food_pos[0], ", Food Y:", game.food_pos[1])
-    print("Score:", game.score)
+    print("Score:", game.score)"""
     
 
 # TODO: IMPLEMENT HERE THE NEW INTELLIGENT METHOD
@@ -293,6 +362,11 @@ def print_line_data(game):
 
     # Tail position
     tail_x, tail_y = game.snake_body[-1]
+
+    # Distance to tail
+    dist_tail_x = head_x - tail_x
+    dist_tail_y = head_y - tail_y
+
 
     # Distance to borders
     dist_left_border = head_x
@@ -337,67 +411,38 @@ def print_line_data(game):
     # Direction
     direction = game.direction
 
-    # Defining ARFF header
-    arff_file = "training5_keyboard.arff"
-    header = """@RELATION snake_game
+    # One hot encoding previous direction
+    prev_direction = game.direction
+    if prev_direction == "UP":
+        prev_up,prev_down,prev_right = 1,0,0
 
-    @ATTRIBUTE Head_x NUMERIC
-    @ATTRIBUTE Head_y NUMERIC
-    @ATTRIBUTE Food_x NUMERIC
-    @ATTRIBUTE Food_y NUMERIC
-    @ATTRIBUTE Score NUMERIC
+    elif prev_direction == "DOWN":
+        prev_up, prev_down, prev_right = 0,1,0
 
-    @ATTRIBUTE Dist_left_border NUMERIC
-    @ATTRIBUTE Dist_right_border NUMERIC
-    @ATTRIBUTE Dist_top_border NUMERIC
-    @ATTRIBUTE Dist_bottom_border NUMERIC
+    elif prev_direction == "RIGHT":
+        prev_up,prev_down,prev_right = 0,0,1
 
-    @ATTRIBUTE Dist_body_x1 NUMERIC
-    @ATTRIBUTE Dist_body_y1 NUMERIC
-    @ATTRIBUTE Dist_body_x2 NUMERIC
-    @ATTRIBUTE Dist_body_y2 NUMERIC
-    @ATTRIBUTE Dist_body_x3 NUMERIC
-    @ATTRIBUTE Dist_body_y3 NUMERIC
-    @ATTRIBUTE Dist_body_x4 NUMERIC
-    @ATTRIBUTE Dist_body_y4 NUMERIC
-   
-    
-    @ATTRIBUTE Tail_x NUMERIC
-    @ATTRIBUTE Tail_y NUMERIC
-    @ATTRIBUTE Horizontal_weight NUMERIC
-    @ATTRIBUTE Vertical_weight NUMERIC
-    @ATTRIBUTE Length NUMERIC
-    @ATTRIBUTE future_score NUMERIC
-
-    @ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
-
-    @DATA"""
-
-    # If the ARFF file does not exist, create it with the header
-    if not os.path.exists(arff_file):
-        with open(arff_file, "w") as f:
-            f.write(header.strip() + "\n\n")
+    else:
+        prev_up,prev_down,prev_right = 0,0,0
 
     # Prepare the current row data, without the future score
     game_data = [
         head_x, head_y, food_x, food_y, score,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,dist_body_x3, dist_body_y3,
-        dist_body_x4, dist_body_y4,tail_x, tail_y, horizontal_weight, vertical_weight, length, 0,  
+        dist_body_x4, dist_body_y4,tail_x, tail_y,dist_tail_x, dist_tail_y, 
+        horizontal_weight, vertical_weight, length, prev_up, prev_down,prev_right,
         direction
     ]
                  
 
-    # If there is a row that has not been written yet, updates it
-    if hasattr(game, "pending_row"):
-        game.pending_row[-2] = score  # Update previous tick's future_score with the current score
-        with open(arff_file, "a") as f:
-            f.write(",".join(map(str, game.pending_row)) + "\n")
+    
+    if game.previous_data:
+        game.previous_data.append(game.score) 
+        game.arff_file.write(','.join(map(str, game.previous_data)) + '\n')
 
-    # Save the current row as pending for the next tick
-    game.pending_row = game_data
+    game.previous_data = game_data
 
-    # Return the current row as a CSV string for debugging/logging purposes
     return game_data
 
 
@@ -480,12 +525,14 @@ while True:
             # Esc -> Create event to quit the game
             if event.key == pygame.K_ESCAPE:
                 pygame.event.post(pygame.event.Event(pygame.QUIT))
+
+    game.prev_direction = game.direction
     game.direction = move_tutorial_1(game)
     #game.direction = move_keyboard(game, event)    
     
     
     # Printing the data
-    #print_line_data(game)
+    print_line_data(game)
     
 
     # Moving the snake
@@ -547,4 +594,4 @@ while True:
     # Refresh rate
     fps_controller.tick(DIFFICULTY)
     # PRINTING STATE
-    print_state(game)
+    #print_state(game)
