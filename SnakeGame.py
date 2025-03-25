@@ -16,7 +16,7 @@ weka.start_jvm()
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 100
+DIFFICULTY = 20
 
 # Window size
 FRAME_SIZE_X = 480
@@ -46,7 +46,7 @@ class GameState:
         self.previous_data = None
 
 
-        self.file = "training_computer.arff"
+        self.file = "training_player.arff"
 
         header = """@RELATION snake_game
 
@@ -527,8 +527,8 @@ while True:
                 pygame.event.post(pygame.event.Event(pygame.QUIT))
 
     game.prev_direction = game.direction
-    game.direction = move_tutorial_1(game)
-    #game.direction = move_keyboard(game, event)    
+    #game.direction = move_tutorial_1(game)
+    game.direction = move_keyboard(game, event)    
     
     
     # Printing the data
