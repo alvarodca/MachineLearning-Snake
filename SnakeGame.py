@@ -7,6 +7,8 @@ Machine Learning Classes - University Carlos III of Madrid
 
 import pygame, sys, time, random, csv, os
 from wekaI import Weka
+import pandas as pd
+from scipy.io import arff
 
 weka = Weka()
 weka.start_jvm()
@@ -45,8 +47,10 @@ class GameState:
         # Storing the previous line of data for storing the score 
         self.previous_data = None
 
+        #self.min_vals, self.max_vals = load_min_max("training_keyboard.arff")
 
-        self.file = "training_computer.arff"
+
+        self.file = "training4_computer.arff"
 
         header = """@RELATION snake_game
 
@@ -54,7 +58,8 @@ class GameState:
     @ATTRIBUTE Head_y NUMERIC
     @ATTRIBUTE Food_x NUMERIC
     @ATTRIBUTE Food_y NUMERIC
-    @ATTRIBUTE Score NUMERIC
+    @ATTRIBUTE Dist_Food_x NUMERIC
+    @ATTRIBUTE Dist_Food_y NUMERIC
 
     @ATTRIBUTE Dist_left_border NUMERIC
     @ATTRIBUTE Dist_right_border NUMERIC
@@ -65,19 +70,7 @@ class GameState:
     @ATTRIBUTE Dist_body_y1 NUMERIC
     @ATTRIBUTE Dist_body_x2 NUMERIC
     @ATTRIBUTE Dist_body_y2 NUMERIC
-    @ATTRIBUTE Dist_body_x3 NUMERIC
-    @ATTRIBUTE Dist_body_y3 NUMERIC
-    @ATTRIBUTE Dist_body_x4 NUMERIC
-    @ATTRIBUTE Dist_body_y4 NUMERIC
-   
     
-    @ATTRIBUTE Tail_x NUMERIC
-    @ATTRIBUTE Tail_y NUMERIC
-    @ATTRIBUTE Dist_Tail_x NUMERIC
-    @ATTRIBUTE Dist_Tail_y NUMERIC
-    @ATTRIBUTE Horizontal_weight NUMERIC
-    @ATTRIBUTE Vertical_weight NUMERIC
-    @ATTRIBUTE Length NUMERIC
     @ATTRIBUTE Prev_UP NUMERIC
     @ATTRIBUTE Prev_DOWN NUMERIC
     @ATTRIBUTE Prev_RIGHT NUMERIC
@@ -144,6 +137,109 @@ def move_keyboard(game, event):
         if (event.key == pygame.K_RIGHT or event.key == ord('d')) and game.direction != 'LEFT':
             change_to = 'RIGHT'
     return change_to
+
+
+def load_min_max(arff_file):
+    data, meta = arff.loadarff(arff_file)
+    df = pd.DataFrame(data)
+    return df.min().values, df.max().values
+
+def normalize_data(data, min_vals, max_vals):
+    """ Normalize numerical values, keep strings unchanged. """
+    return [
+        (i - min_v) / (max_v - min_v) if isinstance(i, (int, float)) and max_v != min_v else i
+        for i, min_v, max_v in zip(data, min_vals, max_vals)
+    ]
+
+
+def move_ml(game):
+    # Gather relevant game state data
+    head_x, head_y = game.snake_body[0]
+    food_x, food_y = game.food_pos
+    tail_x, tail_y = game.snake_body[-1]
+    score = game.score
+
+    dist_food_x = food_x - head_x
+    dist_food_y = food_y - head_y
+
+    # Distance to borders
+    dist_left_border = head_x
+    dist_right_border = FRAME_SIZE_X - head_x
+    dist_up_border = head_y
+    dist_down_border = FRAME_SIZE_Y - head_y
+
+    # Distance to closest body parts
+    distances = distances_to_head(head_x, head_y, game.snake_body)
+    body_x1, body_y1 = distances[0][1], distances[0][2]
+    body_x2, body_y2 = distances[1][1], distances[1][2]
+
+    # Handle missing body parts
+    if len(distances) < 4:
+        dist_body_x3, dist_body_y3 = 500, 500
+        dist_body_x4, dist_body_y4 = 500, 500
+    else:
+        body_x3, body_y3 = distances[2][1], distances[2][2]
+        body_x4, body_y4 = distances[3][1], distances[3][2]
+        dist_body_x3 = head_x - body_x3
+        dist_body_y3 = head_y - body_y3
+        dist_body_x4 = head_x - body_x4
+        dist_body_y4 = head_y - body_y4
+
+    # Distance to body parts
+    dist_body_x1 = head_x - body_x1
+    dist_body_y1 = head_y - body_y1
+    dist_body_x2 = head_x - body_x2
+    dist_body_y2 = head_y - body_y2
+
+    # Snake weights
+    horizontal_weight, vertical_weight = calculate_weights(game)
+
+    # Length
+    length = len(game.snake_body)
+
+
+    # Prepare game data for model prediction
+    # One hot encoding previous direction
+    prev_direction = game.prev_direction
+    if prev_direction == "UP":
+        prev_up,prev_down,prev_right = 1,0,0
+
+    elif prev_direction == "DOWN":
+        prev_up, prev_down, prev_right = 0,1,0
+
+    elif prev_direction == "RIGHT":
+        prev_up,prev_down,prev_right = 0,0,1
+
+    else:
+        prev_up,prev_down,prev_right = 0,0,0
+
+    # Distance to tail
+    dist_tail_x = head_x - tail_x
+    dist_tail_y = head_y - tail_y
+
+    # Prepare the current row data, without the future score
+    """game_data = [
+        head_x, head_y, food_x, food_y, score,
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,dist_body_x3, dist_body_y3,
+        dist_body_x4, dist_body_y4,tail_x, tail_y,dist_tail_x, dist_tail_y, 
+        horizontal_weight, vertical_weight, length, prev_up, prev_down,prev_right
+    ]"""
+
+    game_data = [
+        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, prev_up, prev_down,prev_right
+    ]
+
+    # Normalize data
+    #game_data = normalize_data(game_data, game.min_vals, game.max_vals)
+
+
+    # Predict using the trained model
+    prediction = weka.predict("./nn_iter2.model", game_data, "./training_computer.arff")
+
+    return prediction
 
 # TODO: IMPLEMENT HERE THE NEW INTELLIGENT METHOD
 def move_tutorial_1(game):
@@ -359,8 +455,12 @@ def print_line_data(game):
     head_x = game.snake_body[0][0]
     head_y = game.snake_body[0][1]
     
+    
     # Food position
     food_x, food_y = game.food_pos
+
+    dist_food_x = food_x - head_x
+    dist_food_y = food_y - head_y
 
     # Tail position
     tail_x, tail_y = game.snake_body[-1]
@@ -428,13 +528,19 @@ def print_line_data(game):
         prev_up,prev_down,prev_right = 0,0,0
 
     # Prepare the current row data, without the future score
-    game_data = [
+    """game_data = [
         head_x, head_y, food_x, food_y, score,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,dist_body_x3, dist_body_y3,
         dist_body_x4, dist_body_y4,tail_x, tail_y,dist_tail_x, dist_tail_y, 
         horizontal_weight, vertical_weight, length, prev_up, prev_down,prev_right,
         direction
+    ]"""
+
+    game_data = [
+        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, prev_up, prev_down,prev_right,direction
     ]
                  
 
@@ -527,15 +633,17 @@ while True:
             # Esc -> Create event to quit the game
             if event.key == pygame.K_ESCAPE:
                 pygame.event.post(pygame.event.Event(pygame.QUIT))
-
+    
+    
     game.prev_direction = game.direction
     game.direction = move_tutorial_1(game)
-    #game.direction = move_keyboard(game, event)    
-    
+    #game.direction = move_keyboard(game, event)  
+    #game.direction = move_ml(game)  
+    print_line_data(game)
     
     
     # Printing the data
-    print_line_data(game)
+    #print_line_data(game)
     
 
     # Moving the snake
@@ -598,3 +706,42 @@ while True:
     fps_controller.tick(DIFFICULTY)
     # PRINTING STATE
     #print_state(game)
+
+header2 = """@RELATION snake_game
+
+    @ATTRIBUTE Head_x NUMERIC
+    @ATTRIBUTE Head_y NUMERIC
+    @ATTRIBUTE Food_x NUMERIC
+    @ATTRIBUTE Food_y NUMERIC
+    @ATTRIBUTE Score NUMERIC
+
+    @ATTRIBUTE Dist_left_border NUMERIC
+    @ATTRIBUTE Dist_right_border NUMERIC
+    @ATTRIBUTE Dist_top_border NUMERIC
+    @ATTRIBUTE Dist_bottom_border NUMERIC
+
+    @ATTRIBUTE Dist_body_x1 NUMERIC
+    @ATTRIBUTE Dist_body_y1 NUMERIC
+    @ATTRIBUTE Dist_body_x2 NUMERIC
+    @ATTRIBUTE Dist_body_y2 NUMERIC
+    @ATTRIBUTE Dist_body_x3 NUMERIC
+    @ATTRIBUTE Dist_body_y3 NUMERIC
+    @ATTRIBUTE Dist_body_x4 NUMERIC
+    @ATTRIBUTE Dist_body_y4 NUMERIC
+   
+    
+    @ATTRIBUTE Tail_x NUMERIC
+    @ATTRIBUTE Tail_y NUMERIC
+    @ATTRIBUTE Dist_Tail_x NUMERIC
+    @ATTRIBUTE Dist_Tail_y NUMERIC
+    @ATTRIBUTE Horizontal_weight NUMERIC
+    @ATTRIBUTE Vertical_weight NUMERIC
+    @ATTRIBUTE Length NUMERIC
+    @ATTRIBUTE Prev_UP NUMERIC
+    @ATTRIBUTE Prev_DOWN NUMERIC
+    @ATTRIBUTE Prev_RIGHT NUMERIC
+ 
+    @ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
+    @ATTRIBUTE future_score NUMERIC
+
+    @DATA"""

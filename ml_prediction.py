@@ -73,6 +73,7 @@ class GameState:
         self.food_pos = [random.randrange(1, (FRAME_SIZE[0]//10)) * 10, random.randrange(1, (FRAME_SIZE[1]//10)) * 10]
         self.food_spawn = True
         self.direction = 'RIGHT'
+        self.prev_direction = self.direction # Obtaining the previous direction
         self.change_to = self.direction
         self.score = 0
         self.min_vals, self.max_vals = load_min_max("training_keyboard.arff")
@@ -110,6 +111,7 @@ def move_keyboard(game, event):
     # Whenever a key is pressed down
     change_to = game.direction
     if event.type == pygame.KEYDOWN:
+        
         # W -> Up; S -> Down; A -> Left; D -> Right
         if (event.key == pygame.K_UP or event.key == ord('w')) and game.direction != 'DOWN':
             change_to = 'UP'
