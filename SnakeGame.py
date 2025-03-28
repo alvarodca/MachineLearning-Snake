@@ -18,7 +18,7 @@ weka.start_jvm()
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 100
+DIFFICULTY = 20
 
 # Window size
 FRAME_SIZE_X = 480
@@ -47,10 +47,13 @@ class GameState:
         # Storing the previous line of data for storing the score 
         self.previous_data = None
 
+        # Obtaining the minimum and maximum of a dataset per column
         self.min_vals, self.max_vals = load_min_max("training_saved2.arff")
 
+        # Obtaining the mean and standard deviation values per column
+        self.mean_vals, self.std_vals = load_mean_std("model5.arff")
 
-        self.file = "model5_computer.arff"
+        self.file = "model5_player.arff"
 
         header = """@RELATION snake_game
 
@@ -96,6 +99,7 @@ class GameState:
     @ATTRIBUTE future_score NUMERIC
 
     @DATA"""
+
 
         # If the ARFF file does not exist, create it with the header
         if not os.path.exists(self.file):
@@ -155,10 +159,10 @@ def move_keyboard(game, event):
             change_to = 'RIGHT'
     return change_to
 
-
+# Obtaining the maximum and minimum for normalization
 def load_min_max(arff_file):
-    data, meta = arff.loadarff(arff_file)
-    df = pd.DataFrame(data)
+    data, _ = arff.loadarff(arff_file)
+    df = pd.DataFrame(data).select_dtypes(include=['number'])  # Keep only numeric columns
     return df.min().values, df.max().values
 
 def normalize_data(data, min_vals, max_vals):
@@ -168,6 +172,18 @@ def normalize_data(data, min_vals, max_vals):
         for i, min_v, max_v in zip(data, min_vals, max_vals)
     ]
 
+# Obtaining the mean and standard deviation for standardization
+def load_mean_std(arff_file):
+    data, _ = arff.loadarff(arff_file)
+    df = pd.DataFrame(data).select_dtypes(include=['number'])  # Keep only numeric columns
+    return df.mean().values, df.std().values
+
+def standardize_data(data, mean_vals, std_vals):
+    """ Standardize numerical values, keep strings unchanged. """
+    return [
+        (i - mean_v) / std_v if isinstance(i, (int, float)) and std_v != 0 else i
+        for i, mean_v, std_v in zip(data, mean_vals, std_vals)
+    ]
 
 def move_ml(game):
     # Gather relevant game state data
@@ -242,19 +258,52 @@ def move_ml(game):
         dist_body_x4, dist_body_y4,tail_x, tail_y,dist_tail_x, dist_tail_y, 
         horizontal_weight, vertical_weight, length, prev_up, prev_down,prev_right
     ]"""
-
-    game_data = [
+    # Model 1
+    """game_data = [
         head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, prev_up, prev_down,prev_right
+    ]"""
+    # Model 2
+    game_data = [
+        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3, dist_body_y3,
+        dist_body_x4, dist_body_y4, prev_up, prev_down,prev_right
     ]
-
+    # Model 3
+    """game_data = [
+        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
+        tail_x, tail_y, dist_tail_x, dist_tail_y,
+        prev_up, prev_down,prev_right
+    ]"""
+    # Model 4
+    """game_data = [
+        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
+        tail_x, tail_y, dist_tail_x, dist_tail_y,
+        horizontal_weight, vertical_weight, prev_up, prev_down,prev_right
+    ]"""
+    # Model 5
+    """game_data = [
+        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
+        tail_x, tail_y, dist_tail_x, dist_tail_y, horizontal_weight, vertical_weight, 
+        score, length,prev_up, prev_down,prev_right
+    ]"""
+    #print(game_data)
     # Normalize data
-    game_data = normalize_data(game_data, game.min_vals, game.max_vals)
-    print(game_data)
+    #game_data = normalize_data(game_data, game.min_vals, game.max_vals)
+    #print(game_data)
+    # Standardize data
+    game_data = standardize_data(game_data, game.mean_vals, game.std_vals)
 
     # Predict using the trained model
-    prediction = weka.predict("./nn_less_attributes2.model", game_data, "./training_saved2.arff")
+    prediction = weka.predict("./ibk_model5.model", game_data, "./model5_standardized.arff")
 
     return prediction
 
@@ -601,7 +650,7 @@ def print_line_data(game):
         game.previous_data.append(game.score) 
         game.arff_file.write(','.join(map(str, game.previous_data)) + '\n')
 
-    game.previous_data =model_5
+    game.previous_data = model_5
     #game.previous_data = game_data
     # return game_data
     return model_5
@@ -689,10 +738,10 @@ while True:
     
     
     game.prev_direction = game.direction
-    game.direction = move_tutorial_1(game)
-    #game.direction = move_keyboard(game, event)  
+    #game.direction = move_tutorial_1(game)
+    game.direction = move_keyboard(game, event)  
     #game.direction = move_ml(game)  
-    #print_line_data(game)
+    
     
     
     # Printing the data
@@ -789,7 +838,7 @@ header = """@RELATION snake_game
 
     @DATA"""
 
-# Model2 added al distances
+# Model2 added al distances 1884
 header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
@@ -823,7 +872,7 @@ header = """@RELATION snake_game
 
     @DATA"""
 
-# Model3 added tail elements
+# Model3 added tail elements 814 nn 2000
 header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
@@ -863,7 +912,7 @@ header = """@RELATION snake_game
 
     @DATA"""
 
-# Model 4
+# Model 4 2849 nn 114
 header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
@@ -906,7 +955,7 @@ header = """@RELATION snake_game
 
     @DATA"""
 
-# Full Model, model 5 added previous and score and length
+# Full Model, model 5 added previous and score and length 1459 nn 414 lr 1300
 header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
