@@ -18,7 +18,7 @@ weka.start_jvm()
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 20
+DIFFICULTY = 8
 
 # Window size
 FRAME_SIZE_X = 480
@@ -48,12 +48,12 @@ class GameState:
         self.previous_data = None
 
         # Obtaining the minimum and maximum of a dataset per column
-        self.min_vals, self.max_vals = load_min_max("training_saved2.arff")
+        #self.min_vals, self.max_vals = load_min_max("training_saved2.arff")
 
         # Obtaining the mean and standard deviation values per column
-        self.mean_vals, self.std_vals = load_mean_std("model5.arff")
+        #self.mean_vals, self.std_vals = load_mean_std("iteration1_player.arff")
 
-        self.file = "model5_player.arff"
+        self.file = "easy_player.arff"
 
         header = """@RELATION snake_game
 
@@ -260,25 +260,24 @@ def move_ml(game):
     ]"""
     # Model 1
     """game_data = [
-        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, prev_up, prev_down,prev_right
+        head_x, head_y,food_x, food_y, dist_food_x, dist_food_y,
+        dist_right_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3, dist_body_y3,prev_up, prev_down,prev_right
     ]"""
     # Model 2
-    game_data = [
+    """game_data = [
         head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3, dist_body_y3,
         dist_body_x4, dist_body_y4, prev_up, prev_down,prev_right
-    ]
-    # Model 3
-    """game_data = [
-        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
-        tail_x, tail_y, dist_tail_x, dist_tail_y,
-        prev_up, prev_down,prev_right
     ]"""
+    # Model 3
+    game_data = [
+        head_x, head_y, food_x, food_y, 
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,
+        prev_up, prev_down,prev_right
+    ]
     # Model 4
     """game_data = [
         head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
@@ -300,10 +299,10 @@ def move_ml(game):
     #game_data = normalize_data(game_data, game.min_vals, game.max_vals)
     #print(game_data)
     # Standardize data
-    game_data = standardize_data(game_data, game.mean_vals, game.std_vals)
+    #game_data = standardize_data(game_data, game.mean_vals, game.std_vals)
 
     # Predict using the trained model
-    prediction = weka.predict("./ibk_model5.model", game_data, "./model5_standardized.arff")
+    prediction = weka.predict("./rf_trial3.model", game_data, "./trial3_iteration1.arff")
 
     return prediction
 
@@ -778,7 +777,9 @@ while True:
             if game.food_pos not in game.snake_body:
                 game.food_spawn = True
                 found = True
-            
+    
+
+    
     # GFX
     game_window.fill(BLUE)
     for pos in game.snake_body:
@@ -790,6 +791,7 @@ while True:
     # Snake food
     pygame.draw.rect(game_window, RED, pygame.Rect(game.food_pos[0], game.food_pos[1], 10, 10))
 
+    
     # Game Over conditions
     # Getting out of bounds
     if game.snake_pos[0] < 0 or game.snake_pos[0] > FRAME_SIZE_X-10:
