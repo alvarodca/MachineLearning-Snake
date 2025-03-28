@@ -272,12 +272,12 @@ def move_ml(game):
         dist_body_x4, dist_body_y4, prev_up, prev_down,prev_right
     ]"""
     # Model 3
-    game_data = [
+    """game_data = [
         head_x, head_y, food_x, food_y, 
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,
         prev_up, prev_down,prev_right
-    ]
+    ]"""
     # Model 4
     """game_data = [
         head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
@@ -287,13 +287,13 @@ def move_ml(game):
         horizontal_weight, vertical_weight, prev_up, prev_down,prev_right
     ]"""
     # Model 5
-    """game_data = [
+    game_data = [
         head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
         tail_x, tail_y, dist_tail_x, dist_tail_y, horizontal_weight, vertical_weight, 
         score, length,prev_up, prev_down,prev_right
-    ]"""
+    ]
     #print(game_data)
     # Normalize data
     #game_data = normalize_data(game_data, game.min_vals, game.max_vals)
@@ -302,7 +302,7 @@ def move_ml(game):
     #game_data = standardize_data(game_data, game.mean_vals, game.std_vals)
 
     # Predict using the trained model
-    prediction = weka.predict("./rf_trial3.model", game_data, "./trial3_iteration1.arff")
+    prediction = weka.predict("./rf_easy.model", game_data, "./trial.arff")
 
     return prediction
 
