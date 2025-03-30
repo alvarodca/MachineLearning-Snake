@@ -39,21 +39,18 @@ class GameState:
         self.food_pos = [random.randrange(1, (FRAME_SIZE[0]//10)) * 10, random.randrange(1, (FRAME_SIZE[1]//10)) * 10]
         self.food_spawn = True
         self.direction = 'RIGHT'
-        self.prev_direction = self.direction
+        self.prev_direction = self.direction # Storing the previous direction
         self.change_to = self.direction
         self.score = 0
-        self.first_tick = True
         self.prev_length = len(self.snake_body)
         # Storing the previous line of data for storing the score 
         self.previous_data = None
 
-        # Obtaining the minimum and maximum of a dataset per column
-        #self.min_vals, self.max_vals = load_min_max("training_saved2.arff")
 
         # Obtaining the mean and standard deviation values per column
         #self.mean_vals, self.std_vals = load_mean_std("iteration1_player.arff")
 
-        self.file = "easy_player.arff"
+        self.file = "prediction_iter2.arff"
 
         header = """@RELATION snake_game
 
@@ -95,7 +92,10 @@ class GameState:
     @ATTRIBUTE Prev_DOWN NUMERIC
     @ATTRIBUTE Prev_RIGHT NUMERIC
  
-    @ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
+    @ATTRIBUTE Current_UP NUMERIC
+    @ATTRIBUTE Current_DOWN NUMERIC
+    @ATTRIBUTE Current_RIGHT NUMERIC
+
     @ATTRIBUTE future_score NUMERIC
 
     @DATA"""
@@ -159,18 +159,7 @@ def move_keyboard(game, event):
             change_to = 'RIGHT'
     return change_to
 
-# Obtaining the maximum and minimum for normalization
-def load_min_max(arff_file):
-    data, _ = arff.loadarff(arff_file)
-    df = pd.DataFrame(data).select_dtypes(include=['number'])  # Keep only numeric columns
-    return df.min().values, df.max().values
 
-def normalize_data(data, min_vals, max_vals):
-    """ Normalize numerical values, keep strings unchanged. """
-    return [
-        (i - min_v) / (max_v - min_v) if isinstance(i, (int, float)) and max_v != min_v else i
-        for i, min_v, max_v in zip(data, min_vals, max_vals)
-    ]
 
 # Obtaining the mean and standard deviation for standardization
 def load_mean_std(arff_file):
@@ -246,63 +235,60 @@ def move_ml(game):
     else:
         prev_up,prev_down,prev_right = 0,0,0
 
+    # One hot encoding to the current direction, to be used in regression
+    current_direction = game.direction
+    if current_direction == "UP":
+        current_up,current_down,current_right = 1,0,0
+
+    elif current_direction == "DOWN":
+        current_up, current_down, current_right = 0,1,0
+
+    elif current_direction == "RIGHT":
+        current_up,current_down,current_right = 0,0,1
+
+    else:
+        current_up,current_down,current_right = 0,0,0
+
     # Distance to tail
     dist_tail_x = head_x - tail_x
     dist_tail_y = head_y - tail_y
 
-    # Prepare the current row data, without the future score
-    """game_data = [
-        head_x, head_y, food_x, food_y, score,
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,dist_body_x3, dist_body_y3,
-        dist_body_x4, dist_body_y4,tail_x, tail_y,dist_tail_x, dist_tail_y, 
-        horizontal_weight, vertical_weight, length, prev_up, prev_down,prev_right
-    ]"""
-    # Model 1
-    """game_data = [
-        head_x, head_y,food_x, food_y, dist_food_x, dist_food_y,
-        dist_right_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3, dist_body_y3,prev_up, prev_down,prev_right
-    ]"""
-    # Model 2
-    """game_data = [
-        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3, dist_body_y3,
-        dist_body_x4, dist_body_y4, prev_up, prev_down,prev_right
-    ]"""
-    # Model 3
     """game_data = [
         head_x, head_y, food_x, food_y, 
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,
+        dist_right_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,tail_x, tail_y,
         prev_up, prev_down,prev_right
     ]"""
-    # Model 4
-    """game_data = [
-        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
-        tail_x, tail_y, dist_tail_x, dist_tail_y,
-        horizontal_weight, vertical_weight, prev_up, prev_down,prev_right
-    ]"""
-    # Model 5
+    # First iteration variables PREDICTION
     game_data = [
+        head_x, head_y, food_x, food_y, 
+        dist_right_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,tail_x, tail_y,
+        prev_up, prev_down,prev_right,current_up, current_down, current_right
+    ]
+    # Second iteration CLASSIFICATION
+    """game_data = [
         head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
         tail_x, tail_y, dist_tail_x, dist_tail_y, horizontal_weight, vertical_weight, 
         score, length,prev_up, prev_down,prev_right
-    ]
-    #print(game_data)
-    # Normalize data
-    #game_data = normalize_data(game_data, game.min_vals, game.max_vals)
-    #print(game_data)
+    ]"""
+    # Second iteration PREDICTION
+    """game_data = [
+        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
+        tail_x, tail_y, dist_tail_x, dist_tail_y, horizontal_weight, vertical_weight, 
+        score, length,prev_up, prev_down,prev_right, current_up, current_down, current_right
+    ]"""
+
+
     # Standardize data
     #game_data = standardize_data(game_data, game.mean_vals, game.std_vals)
 
     # Predict using the trained model
-    prediction = weka.predict("./rf_easy.model", game_data, "./trial.arff")
+    prediction = weka.predict("./rf_iteration1.model", game_data, "./tree_data_iteration1.arff")
 
     return prediction
 
@@ -494,16 +480,6 @@ def calculate_weights(game) -> tuple:
     
     return horizontal, vertical    
 
-
-"""# PRINTING DATA FROM GAME STATE
-def print_state(game):
-    print("--------GAME STATE--------")
-    print("FrameSize:", FRAME_SIZE_X, FRAME_SIZE_Y)
-    print("Direction:", game.direction)
-    print("Snake X:", game.snake_pos[0], ", Snake Y:", game.snake_pos[1])
-    print("Snake Body:", game.snake_body)
-    print("Food X:", game.food_pos[0], ", Food Y:", game.food_pos[1])
-    print("Score:", game.score)"""
     
 
 # TODO: IMPLEMENT HERE THE NEW INTELLIGENT METHOD
@@ -592,55 +568,49 @@ def print_line_data(game):
     else:
         prev_up,prev_down,prev_right = 0,0,0
 
-    # Prepare the current row data, without the future score
+    # One hot encoding to the current direction, to be used in regression
+    current_direction = game.direction
+    if current_direction == "UP":
+        current_up,current_down,current_right = 1,0,0
+
+    elif current_direction == "DOWN":
+        current_up, current_down, current_right = 0,1,0
+
+    elif current_direction == "RIGHT":
+        current_up,current_down,current_right = 0,0,1
+
+    else:
+        current_up,current_down,current_right = 0,0,0
+
+    # First iteration variables CLASSIFICATION
     """game_data = [
-        head_x, head_y, food_x, food_y, score,
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,dist_body_x3, dist_body_y3,
-        dist_body_x4, dist_body_y4,tail_x, tail_y,dist_tail_x, dist_tail_y, 
-        horizontal_weight, vertical_weight, length, prev_up, prev_down,prev_right,
-        direction
-    ]"""
-    # Basic data worked best first time
-    model_1 = [
-        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, prev_up, prev_down,prev_right,direction
-    ]
-
-     # Model 2 added all the distances
-    model_2 = [
-        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3, dist_body_y3,
-        dist_body_x4, dist_body_y4, prev_up, prev_down,prev_right,direction
-    ]
-
-     # Added all the tail elements
-    model_3 = [
-        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
-        tail_x, tail_y, dist_tail_x, dist_tail_y,
+        head_x, head_y, food_x, food_y, 
+        dist_right_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,tail_x, tail_y,
         prev_up, prev_down,prev_right,direction
-    ]
-
-    # Added the weights
-    model_4 = [
-        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
-        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
-        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
-        tail_x, tail_y, dist_tail_x, dist_tail_y,
-        horizontal_weight, vertical_weight, prev_up, prev_down,prev_right,direction
-    ]
-
-    # Added score and length
-    model_5 = [
+    ]"""
+    """# First iteration variables PREDICTION
+    game_data = [
+        head_x, head_y, food_x, food_y, 
+        dist_right_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,tail_x, tail_y,
+        prev_up, prev_down,prev_right,current_up, current_down, current_right
+    ]"""
+    # Second iteration CLASSIFICATION
+    """game_data = [
         head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
         tail_x, tail_y, dist_tail_x, dist_tail_y, horizontal_weight, vertical_weight, 
-        score, length,prev_up, prev_down,prev_right,direction
+        score, length,prev_up, prev_down,prev_right, direction
+    ]"""
+    # Second iteration PREDICTION
+    game_data = [
+        head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
+        dist_left_border, dist_right_border, dist_up_border, dist_down_border,
+        dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
+        tail_x, tail_y, dist_tail_x, dist_tail_y, horizontal_weight, vertical_weight, 
+        score, length,prev_up, prev_down,prev_right, current_up, current_down, current_right
     ]
                  
 
@@ -649,10 +619,11 @@ def print_line_data(game):
         game.previous_data.append(game.score) 
         game.arff_file.write(','.join(map(str, game.previous_data)) + '\n')
 
-    game.previous_data = model_5
-    #game.previous_data = game_data
-    # return game_data
-    return model_5
+    
+    game.previous_data = game_data
+    
+    return game_data
+    
 
 
 def distances_to_head(head_x: int, head_y: int, snake_body: list[int]) -> tuple:
@@ -811,99 +782,24 @@ while True:
     # PRINTING STATE
     #print_state(game)
 
-# Model 1
+# Model 1 first iteration classification
 header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
     @ATTRIBUTE Head_y NUMERIC
     @ATTRIBUTE Food_x NUMERIC
     @ATTRIBUTE Food_y NUMERIC
-    @ATTRIBUTE Dist_Food_x NUMERIC
-    @ATTRIBUTE Dist_Food_y NUMERIC
 
-    @ATTRIBUTE Dist_left_border NUMERIC
     @ATTRIBUTE Dist_right_border NUMERIC
-    @ATTRIBUTE Dist_top_border NUMERIC
     @ATTRIBUTE Dist_bottom_border NUMERIC
 
     @ATTRIBUTE Dist_body_x1 NUMERIC
     @ATTRIBUTE Dist_body_y1 NUMERIC
     @ATTRIBUTE Dist_body_x2 NUMERIC
     @ATTRIBUTE Dist_body_y2 NUMERIC
-    
-    @ATTRIBUTE Prev_UP NUMERIC
-    @ATTRIBUTE Prev_DOWN NUMERIC
-    @ATTRIBUTE Prev_RIGHT NUMERIC
- 
-    @ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
-    @ATTRIBUTE future_score NUMERIC
-
-    @DATA"""
-
-# Model2 added al distances 1884
-header = """@RELATION snake_game
-
-    @ATTRIBUTE Head_x NUMERIC
-    @ATTRIBUTE Head_y NUMERIC
-    @ATTRIBUTE Food_x NUMERIC
-    @ATTRIBUTE Food_y NUMERIC
-    @ATTRIBUTE Score NUMERIC
-
-    @ATTRIBUTE Dist_left_border NUMERIC
-    @ATTRIBUTE Dist_right_border NUMERIC
-    @ATTRIBUTE Dist_top_border NUMERIC
-    @ATTRIBUTE Dist_bottom_border NUMERIC
-
-    @ATTRIBUTE Dist_body_x1 NUMERIC
-    @ATTRIBUTE Dist_body_y1 NUMERIC
-    @ATTRIBUTE Dist_body_x2 NUMERIC
-    @ATTRIBUTE Dist_body_y2 NUMERIC
-    @ATTRIBUTE Dist_body_x3 NUMERIC
-    @ATTRIBUTE Dist_body_y3 NUMERIC
-    @ATTRIBUTE Dist_body_x4 NUMERIC
-    @ATTRIBUTE Dist_body_y4 NUMERIC
-   
-    
-    @ATTRIBUTE Length NUMERIC
-    @ATTRIBUTE Prev_UP NUMERIC
-    @ATTRIBUTE Prev_DOWN NUMERIC
-    @ATTRIBUTE Prev_RIGHT NUMERIC
- 
-    @ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
-    @ATTRIBUTE future_score NUMERIC
-
-    @DATA"""
-
-# Model3 added tail elements 814 nn 2000
-header = """@RELATION snake_game
-
-    @ATTRIBUTE Head_x NUMERIC
-    @ATTRIBUTE Head_y NUMERIC
-    @ATTRIBUTE Food_x NUMERIC
-    @ATTRIBUTE Food_y NUMERIC
-    @ATTRIBUTE Dist_Food_x NUMERIC
-    @ATTRIBUTE Dist_Food_y NUMERIC
-   
-
-    @ATTRIBUTE Dist_left_border NUMERIC
-    @ATTRIBUTE Dist_right_border NUMERIC
-    @ATTRIBUTE Dist_top_border NUMERIC
-    @ATTRIBUTE Dist_bottom_border NUMERIC
-
-    @ATTRIBUTE Dist_body_x1 NUMERIC
-    @ATTRIBUTE Dist_body_y1 NUMERIC
-    @ATTRIBUTE Dist_body_x2 NUMERIC
-    @ATTRIBUTE Dist_body_y2 NUMERIC
-    @ATTRIBUTE Dist_body_x3 NUMERIC
-    @ATTRIBUTE Dist_body_y3 NUMERIC
-    @ATTRIBUTE Dist_body_x4 NUMERIC
-    @ATTRIBUTE Dist_body_y4 NUMERIC
-   
     
     @ATTRIBUTE Tail_x NUMERIC
     @ATTRIBUTE Tail_y NUMERIC
-    @ATTRIBUTE Dist_Tail_x NUMERIC
-    @ATTRIBUTE Dist_Tail_y NUMERIC
 
     @ATTRIBUTE Prev_UP NUMERIC
     @ATTRIBUTE Prev_DOWN NUMERIC
@@ -914,50 +810,38 @@ header = """@RELATION snake_game
 
     @DATA"""
 
-# Model 4 2849 nn 114
+# Model 1 1st iteration prediction
 header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
     @ATTRIBUTE Head_y NUMERIC
     @ATTRIBUTE Food_x NUMERIC
     @ATTRIBUTE Food_y NUMERIC
-    @ATTRIBUTE Dist_Food_x NUMERIC
-    @ATTRIBUTE Dist_Food_y NUMERIC
-   
 
-    @ATTRIBUTE Dist_left_border NUMERIC
     @ATTRIBUTE Dist_right_border NUMERIC
-    @ATTRIBUTE Dist_top_border NUMERIC
     @ATTRIBUTE Dist_bottom_border NUMERIC
 
     @ATTRIBUTE Dist_body_x1 NUMERIC
     @ATTRIBUTE Dist_body_y1 NUMERIC
     @ATTRIBUTE Dist_body_x2 NUMERIC
     @ATTRIBUTE Dist_body_y2 NUMERIC
-    @ATTRIBUTE Dist_body_x3 NUMERIC
-    @ATTRIBUTE Dist_body_y3 NUMERIC
-    @ATTRIBUTE Dist_body_x4 NUMERIC
-    @ATTRIBUTE Dist_body_y4 NUMERIC
-   
     
     @ATTRIBUTE Tail_x NUMERIC
     @ATTRIBUTE Tail_y NUMERIC
-    @ATTRIBUTE Dist_Tail_x NUMERIC
-    @ATTRIBUTE Dist_Tail_y NUMERIC
-
-    @ATTRIBUTE Horizontal_Weight NUMERIC
-    @ATTRIBUTE Vertical_Weight NUMERIC
 
     @ATTRIBUTE Prev_UP NUMERIC
     @ATTRIBUTE Prev_DOWN NUMERIC
     @ATTRIBUTE Prev_RIGHT NUMERIC
  
-    @ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
+    @ATTRIBUTE Current_UP NUMERIC
+    @ATTRIBUTE Current_DOWN NUMERIC
+    @ATTRIBUTE Current_RIGHT NUMERIC
+
     @ATTRIBUTE future_score NUMERIC
 
     @DATA"""
 
-# Full Model, model 5 added previous and score and length 1459 nn 414 lr 1300
+# full model second iteration classification
 header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
@@ -999,6 +883,56 @@ header = """@RELATION snake_game
     @ATTRIBUTE Prev_RIGHT NUMERIC
  
     @ATTRIBUTE direction {UP, DOWN, LEFT, RIGHT}
+    @ATTRIBUTE future_score NUMERIC
+
+    @DATA"""
+
+
+# full model second iteration classification
+header = """@RELATION snake_game
+
+    @ATTRIBUTE Head_x NUMERIC
+    @ATTRIBUTE Head_y NUMERIC
+    @ATTRIBUTE Food_x NUMERIC
+    @ATTRIBUTE Food_y NUMERIC
+    @ATTRIBUTE Dist_Food_x NUMERIC
+    @ATTRIBUTE Dist_Food_y NUMERIC
+   
+
+    @ATTRIBUTE Dist_left_border NUMERIC
+    @ATTRIBUTE Dist_right_border NUMERIC
+    @ATTRIBUTE Dist_top_border NUMERIC
+    @ATTRIBUTE Dist_bottom_border NUMERIC
+
+    @ATTRIBUTE Dist_body_x1 NUMERIC
+    @ATTRIBUTE Dist_body_y1 NUMERIC
+    @ATTRIBUTE Dist_body_x2 NUMERIC
+    @ATTRIBUTE Dist_body_y2 NUMERIC
+    @ATTRIBUTE Dist_body_x3 NUMERIC
+    @ATTRIBUTE Dist_body_y3 NUMERIC
+    @ATTRIBUTE Dist_body_x4 NUMERIC
+    @ATTRIBUTE Dist_body_y4 NUMERIC
+   
+    
+    @ATTRIBUTE Tail_x NUMERIC
+    @ATTRIBUTE Tail_y NUMERIC
+    @ATTRIBUTE Dist_Tail_x NUMERIC
+    @ATTRIBUTE Dist_Tail_y NUMERIC
+
+    @ATTRIBUTE Horizontal_Weight NUMERIC
+    @ATTRIBUTE Vertical_Weight NUMERIC
+
+    @ATTRIBUTE Score NUMERIC
+    @ATTRIBUTE Length NUMERIC
+
+    @ATTRIBUTE Prev_UP NUMERIC
+    @ATTRIBUTE Prev_DOWN NUMERIC
+    @ATTRIBUTE Prev_RIGHT NUMERIC
+ 
+    @ATTRIBUTE Current_UP NUMERIC
+    @ATTRIBUTE Current_DOWN NUMERIC
+    @ATTRIBUTE Current_RIGHT NUMERIC
+
     @ATTRIBUTE future_score NUMERIC
 
     @DATA"""
