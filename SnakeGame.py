@@ -18,7 +18,7 @@ weka.start_jvm()
 # Hard      ->  40
 # Harder    ->  60
 # Impossible->  120
-DIFFICULTY = 8
+DIFFICULTY = 100
 
 # Window size
 FRAME_SIZE_X = 480
@@ -48,10 +48,12 @@ class GameState:
 
 
         # Obtaining the mean and standard deviation values per column
-        #self.mean_vals, self.std_vals = load_mean_std("iteration1_player.arff")
+        self.mean_vals, self.std_vals = load_mean_std("full_data_iteration2.arff")
 
+        # File to save the information
         self.file = "prediction_iter2.arff"
 
+        # Header for the arff file with its attributes
         header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
@@ -111,7 +113,7 @@ class GameState:
 
 # Game Over
 def game_over(game):
-
+    # Saves future score for the last column
     if game.previous_data:
         game.previous_data.append(-1)  
         game.arff_file.write(','.join(map(str, game.previous_data)) + '\n')
@@ -127,6 +129,7 @@ def game_over(game):
     pygame.display.flip()
     time.sleep(3)
     weka.stop_jvm() # Stopping weka
+    print("Score:",game.score)
     pygame.quit()
     sys.exit()
 
@@ -147,6 +150,7 @@ def move_keyboard(game, event):
     # Whenever a key is pressed down
     change_to = game.direction
     if event.type == pygame.KEYDOWN:
+        # Save the previous direction
         game.prev_direction = game.direction
         # W -> Up; S -> Down; A -> Left; D -> Right
         if (event.key == pygame.K_UP or event.key == ord('w')) and game.direction != 'DOWN':
@@ -167,6 +171,7 @@ def load_mean_std(arff_file):
     df = pd.DataFrame(data).select_dtypes(include=['number'])  # Keep only numeric columns
     return df.mean().values, df.std().values
 
+# Standardizing the data previously obtained
 def standardize_data(data, mean_vals, std_vals):
     """ Standardize numerical values, keep strings unchanged. """
     return [
@@ -174,6 +179,7 @@ def standardize_data(data, mean_vals, std_vals):
         for i, mean_v, std_v in zip(data, mean_vals, std_vals)
     ]
 
+# Function to perform the prediction
 def move_ml(game):
     # Gather relevant game state data
     head_x, head_y = game.snake_body[0]
@@ -181,6 +187,7 @@ def move_ml(game):
     tail_x, tail_y = game.snake_body[-1]
     score = game.score
 
+    # Distance to the head
     dist_food_x = food_x - head_x
     dist_food_y = food_y - head_y
 
@@ -235,7 +242,7 @@ def move_ml(game):
     else:
         prev_up,prev_down,prev_right = 0,0,0
 
-    # One hot encoding to the current direction, to be used in regression
+    # One hot encoding the current direction, to be used in regression
     current_direction = game.direction
     if current_direction == "UP":
         current_up,current_down,current_right = 1,0,0
@@ -253,29 +260,29 @@ def move_ml(game):
     dist_tail_x = head_x - tail_x
     dist_tail_y = head_y - tail_y
 
-    """game_data = [
+    """ game_data = [
         head_x, head_y, food_x, food_y, 
         dist_right_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,tail_x, tail_y,
         prev_up, prev_down,prev_right
     ]"""
     # First iteration variables PREDICTION
-    game_data = [
+    """game_data = [
         head_x, head_y, food_x, food_y, 
         dist_right_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2,tail_x, tail_y,
         prev_up, prev_down,prev_right,current_up, current_down, current_right
-    ]
+    ]"""
     # Second iteration CLASSIFICATION
-    """game_data = [
+    game_data = [
         head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
         tail_x, tail_y, dist_tail_x, dist_tail_y, horizontal_weight, vertical_weight, 
         score, length,prev_up, prev_down,prev_right
-    ]"""
+    ]
     # Second iteration PREDICTION
-    """game_data = [
+    """game_data2 = [
         head_x, head_y, food_x, food_y, dist_food_x, dist_food_y,
         dist_left_border, dist_right_border, dist_up_border, dist_down_border,
         dist_body_x1, dist_body_y1,dist_body_x2, dist_body_y2, dist_body_x3,dist_body_y3,dist_body_x4,dist_body_y4,
@@ -283,12 +290,11 @@ def move_ml(game):
         score, length,prev_up, prev_down,prev_right, current_up, current_down, current_right
     ]"""
 
-
-    # Standardize data
+    # Standardize data WE USED IT FOR SOME MODELS
     #game_data = standardize_data(game_data, game.mean_vals, game.std_vals)
 
     # Predict using the trained model
-    prediction = weka.predict("./rf_iteration1.model", game_data, "./tree_data_iteration1.arff")
+    prediction = weka.predict("./rf_iter2.model", game_data, "./training_tree_data_iteration2.arff")
 
     return prediction
 
@@ -299,10 +305,10 @@ def move_tutorial_1(game):
     the position of the food, the directions that is being blocked and the weights 
     of the snake in both axis
     ''' 
+    # Save the previous direction
     game.prev_direction = game.direction 
 
     # Head position
-  
     head_x = game.snake_body[0][0]
     head_y = game.snake_body[0][1]
     
@@ -394,6 +400,7 @@ def calculate_blocking(head_x: int, head_y: int, body_x: list, body_y: list, dis
     Takes inputs from the snake and calculates whether it has been blocked in every direction
     """
 
+    # Initially all directions are accessible
     blocked = {"LEFT": False, "RIGHT": False, "UP": False, "DOWN": False}
     
 
@@ -492,7 +499,6 @@ def print_line_data(game):
     score = game.score
 
     # Head position
-  
     head_x = game.snake_body[0][0]
     head_y = game.snake_body[0][1]
     
@@ -500,6 +506,7 @@ def print_line_data(game):
     # Food position
     food_x, food_y = game.food_pos
 
+    # Distance to the head
     dist_food_x = food_x - head_x
     dist_food_y = food_y - head_y
 
@@ -522,7 +529,7 @@ def print_line_data(game):
     body_x1, body_y1 = distances[0][1], distances[0][2]
     body_x2, body_y2 = distances[1][1], distances[1][2]
 
-
+    # Distance to the closest body parts
     if len(distances) < 4:
         dist_body_x3, dist_body_y3 = 500, 500
         dist_body_x4, dist_body_y4 = 500, 500
@@ -614,12 +621,12 @@ def print_line_data(game):
     ]
                  
 
-    
+    # Saving the future score
     if game.previous_data:
         game.previous_data.append(game.score) 
         game.arff_file.write(','.join(map(str, game.previous_data)) + '\n')
 
-    
+    # Saving the next previous data as the current one
     game.previous_data = game_data
     
     return game_data
@@ -706,16 +713,16 @@ while True:
             if event.key == pygame.K_ESCAPE:
                 pygame.event.post(pygame.event.Event(pygame.QUIT))
     
-    
+    # Obtaining the different directions depending on the method 
     game.prev_direction = game.direction
     #game.direction = move_tutorial_1(game)
-    game.direction = move_keyboard(game, event)  
-    #game.direction = move_ml(game)  
+    #game.direction = move_keyboard(game, event)  
+    game.direction = move_ml(game)  
     
     
     
     # Printing the data
-    print_line_data(game)
+    #print_line_data(game)
     
 
     # Moving the snake
@@ -779,8 +786,6 @@ while True:
     pygame.display.update()
     # Refresh rate
     fps_controller.tick(DIFFICULTY)
-    # PRINTING STATE
-    #print_state(game)
 
 # Model 1 first iteration classification
 header = """@RELATION snake_game
@@ -888,7 +893,7 @@ header = """@RELATION snake_game
     @DATA"""
 
 
-# full model second iteration classification
+# full model second iteration prediction
 header = """@RELATION snake_game
 
     @ATTRIBUTE Head_x NUMERIC
